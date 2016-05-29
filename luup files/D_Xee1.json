@@ -1,0 +1,232 @@
+{
+	"default_icon": "http://vosmont.github.io/icons/xee.png",
+	"state_icons": [
+		{
+			"img": "http://vosmont.github.io/icons/xee.png",
+			"conditions": [
+				{
+					"service": "urn:micasaverde-com:serviceId:HaDevice1",
+					"variable": "CommFailure",
+					"operator": "==",
+					"value": 0
+				}
+			]
+		},
+		{
+			"img": "http://vosmont.github.io/icons/xee_failure.png",
+			"conditions": [
+				{
+					"service": "urn:micasaverde-com:serviceId:HaDevice1",
+					"variable": "CommFailure",
+					"operator": ">=",
+					"value": 1
+				}
+			]
+		}
+	],
+	"x": "2",
+	"y": "4",
+	"inScene": "0",
+	"Tabs": [
+		{
+			"Label": {
+				"lang_tag": "ui7_tabname_control",
+				"text": "Control"
+			},
+			"Position": "0",
+			"TabType": "flash",
+			"top_navigation_tab": "1",
+			"SceneGroup": [
+				{
+					"id": "1"
+				}
+			],
+			"ControlGroup": [
+				{
+					"id": "1",
+					"scenegroup": "1"
+				}
+			],
+			"Control": [
+				{
+					"ControlGroup": "1",
+					"ControlType": "label",
+					"top": "0",
+					"left": "0",
+					"text_align": "left",
+					"Label": {
+						"lang_tag": "ui7_xee_version",
+						"text": "Version"
+					},
+					"Display": {
+						"Top": 25,
+						"Left": 10,
+						"Width": 50,
+						"Height": 20
+					}
+				},
+				{
+					"ControlGroup": "1",
+					"ControlType": "variable",
+					"top": "0",
+					"left": "0",
+					"x": "1",
+					"text_align": "left",
+					"Display": {
+						"Service": "urn:upnp-org:serviceId:Xee1",
+						"Variable": "PluginVersion",
+						"Top": 25,
+						"Left": 80,
+						"Width": 50,
+						"Height": 20
+					}
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "line_break"
+				},
+				{
+					"ControlGroup": "1",
+					"ControlType": "label",
+					"top": "0",
+					"left": "0",
+					"text_align": "left",
+					"Label": {
+						"lang_tag": "ui7_last_update",
+						"text": "Last update"
+					},
+					"Display": {
+						"Top": 40,
+						"Left": 10,
+						"Width": 50,
+						"Height": 20
+					}
+				},
+				{
+					"ControlGroup": "1",
+					"ControlType": "variable",
+					"top": "0",
+					"left": "0",
+					"x": "1",
+					"text_align": "left",
+					"Display": {
+						"Service": "urn:upnp-org:serviceId:Xee1",
+						"Variable": "LastUpdateDate",
+						"Top": 40,
+						"Left": 80,
+						"Width": 50,
+						"Height": 20
+					}
+				},
+			]
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_xee_authentification",
+				"text": "Authentification"
+			},
+			"Position": "1",
+			"top_navigation_tab": "1",
+			"TabType": "javascript",
+			"ScriptName": "J_Xee1.js",
+			"Function": "Xee.showAuthentification"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_xee_cars",
+				"text": "Cars"
+			},
+			"Position": "2",
+			"top_navigation_tab": "1",
+			"TabType": "javascript",
+			"ScriptName": "J_Xee1.js",
+			"Function": "Xee.showCars"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_xee_errors",
+				"text": "Errors"
+			},
+			"Position": "3",
+			"top_navigation_tab": "1",
+			"TabType": "javascript",
+			"ScriptName": "J_Xee1.js",
+			"Function": "Xee.showErrors"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_donate",
+				"text": "Donate"
+			},
+			"Position": "4",
+			"top_navigation_tab": "1",
+			"TabType": "javascript",
+			"ScriptName": "J_Xee1.js",
+			"Function": "Xee.showDonate"
+		},
+		{
+			"Label": {
+				"lang_tag": "settings",
+				"text": "Settings"
+			},
+			"Position": "5",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "simple_device"
+		},
+		{
+			"Label": {
+				"lang_tag": "advanced",
+				"text": "Advanced"
+			},
+			"Position": "6",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "advanced_device"
+		}
+	],
+	"eventList2":[
+		{
+			"id": 1,
+			"label": {
+				"lang_tag": "device_has_com_failure_on_off",
+				"text": "Device has a communication failure or not"
+			},
+			"serviceId": "urn:micasaverde-com:serviceId:HaDevice1",
+			"argumentList": [
+				{
+					"id": 1,
+					"dataType": "i1",
+					"defaultValue": "1",
+					"allowedValueList": [
+						{
+							"value": "0",
+							"HumanFriendlyText": {
+								"lang_tag": "device_has_no_more_com_failure",
+								"text": "Whenever the _DEVICE_NAME_ has no more a communication failure"
+							}
+						},
+						{
+							"value": "1",
+							"HumanFriendlyText": {
+								"lang_tag": "device_has_com_failure",
+								"text": "Whenever the _DEVICE_NAME_ has a communication failure"
+							}
+						},
+						{
+							"value": "2",
+							"HumanFriendlyText": {
+								"lang_tag": "device_has_authentification_failure",
+								"text": "Whenever the _DEVICE_NAME_ has an authentification failure"
+							}
+						}
+					],
+					"name": "CommFailure",
+					"comparisson": "=",
+					"defaultValue": "1"
+				}
+			]
+		}
+	],
+	"device_type": "urn:schemas-upnp-org:device:Xee:1"
+}

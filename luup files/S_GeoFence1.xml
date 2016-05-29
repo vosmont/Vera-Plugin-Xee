@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:schemas-upnp-org:service-1-0">
+	<specVersion>
+		<major>1</major>
+		<minor>0</minor>
+	</specVersion>
+	<serviceStateTable>
+		<stateVariable>
+			<name>Fences</name>
+			<sendEventsAttribute>no</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>fences</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<name>Distance</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>ui4</dataType>
+			<shortCode>distance</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<name>Distances</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>distances</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<Optional />
+			<name>ZoneIn</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>zonein</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<Optional />
+			<name>ZoneEnter</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>zoneenter</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<Optional />
+			<name>ZoneExit</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>zoneexit</shortCode>
+		</stateVariable>
+	</serviceStateTable>
+	<actionList>
+	</actionList>
+</scpd>

@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:schemas-upnp-org:service-1-0">
+	<specVersion>
+		<major>1</major>
+		<minor>0</minor>
+	</specVersion>
+	<serviceStateTable>
+		<stateVariable>
+			<name>Latitude</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>latitude</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<name>Longitude</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>longitude</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<Optional />
+			<name>Altitude</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>string</dataType>
+			<shortCode>altitude</shortCode>
+		</stateVariable>
+		<stateVariable>
+			<Optional />
+			<name>Heading</name>
+			<sendEventsAttribute>yes</sendEventsAttribute>
+			<dataType>i4</dataType>
+			<shortCode>heading</shortCode>
+			<allowedValueRange>
+				<minimum>0</minimum>
+				<maximum>360</maximum>
+				<step>1</step>
+			</allowedValueRange>
+		</stateVariable>
+	</serviceStateTable>
+	<actionList>
+	</actionList>
+</scpd>

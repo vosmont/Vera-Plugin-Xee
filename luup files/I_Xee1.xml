@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<implementation>
+	<functions>
+		local Xee
+
+		function Xee_startup( lul_device )
+			luup.log( "Xee startup" )
+			Xee = require( "L_Xee1" )
+			return Xee.startup( lul_device )
+		end
+	</functions>
+	<startup>Xee_startup</startup>
+	<actionList>
+		<!-- Xee -->
+		<action>
+			<serviceId>urn:upnp-org:serviceId:Xee1</serviceId>
+			<name>SetTokens</name>
+			<job>
+				Xee.setTokens( lul_settings.newTokens )
+				return 4, nil
+			</job>
+		</action>
+		<action>
+			<serviceId>urn:upnp-org:serviceId:Xee1</serviceId>
+			<name>Sync</name>
+			<job>
+				Xee.sync()
+				return 4, nil
+			</job>
+		</action>
+		<!-- Xee Car -->
+	</actionList>
+</implementation>

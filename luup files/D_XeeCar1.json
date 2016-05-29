@@ -1,0 +1,578 @@
+{
+	"default_icon": "http://vosmont.github.io/icons/xee_car.png",
+	"state_icons": [
+		{
+			"img": "http://vosmont.github.io/icons/xee_car.png",
+			"conditions": [
+				{
+					"service": "urn:micasaverde-com:serviceId:HaDevice1",
+					"variable": "CommFailure",
+					"operator": "==",
+					"value": 0
+				}
+			]
+		},
+		{
+			"img": "http://vosmont.github.io/icons/xee_car_failure.png",
+			"conditions": [
+				{
+					"service": "urn:micasaverde-com:serviceId:HaDevice1",
+					"variable": "CommFailure",
+					"operator": ">=",
+					"value": 1
+				}
+			]
+		}
+	],
+	"x": "2",
+	"y": "4",
+	"inScene": "1",
+	"Tabs": [
+		{
+			"Label": {
+				"lang_tag": "ui7_tabname_control",
+				"text": "Control"
+			},
+			"Position": "0",
+			"TabType": "flash",
+			"top_navigation_tab": "1",
+			"SceneGroup": [
+				{
+					"id": "1"
+				}
+			],
+			"ControlGroup": [
+				{
+					"id": "1",
+					"scenegroup": "1"
+				}
+			],
+			"Control": [
+			]
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_xee_car",
+				"text": "Car"
+			},
+			"Position": "1",
+			"top_navigation_tab": "1",
+			"TabType": "javascript",
+			"ScriptName": "J_Xee1.js",
+			"Function": "Xee.showCar"
+		},
+		{
+			"Label": {
+				"lang_tag": "settings",
+				"text": "Settings"
+			},
+			"Position": "2",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "simple_device"
+		},
+		{
+			"Label": {
+				"lang_tag": "advanced",
+				"text": "Advanced"
+			},
+			"Position": "3",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "advanced_device"
+		}
+	],
+	"eventList2":[
+		{
+			"id": 1,
+			"label": {
+				"lang_tag": "xeecar_failure",
+				"text": "Car failure"
+			},
+			"serviceId": "urn:micasaverde-com:serviceId:HaDevice1",
+			"argumentList": [
+				{
+					"id": 1,
+					"dataType": "i1",
+					"name": "CommFailure",
+					"comparisson": "=",
+					"defaultValue": "1",
+					"allowedValueList": [
+						{
+							"value": "0",
+							"HumanFriendlyText": {
+								"lang_tag": "device_has_no_more_failure",
+								"text": "_DEVICE_NAME_ has no more failure"
+							}
+						},
+						{
+							"value": "1",
+							"HumanFriendlyText": {
+								"lang_tag": "device_has_com_failure",
+								"text": "_DEVICE_NAME_ has a communication failure"
+							}
+						},
+						{
+							"value": "2",
+							"HumanFriendlyText": {
+								"lang_tag": "device_has_authentification_failure",
+								"text": "_DEVICE_NAME_ has an authentification failure"
+							}
+						}
+					]
+				}
+			]
+		},
+
+		{
+			"id":101,
+			"label": {
+				"lang_tag": "xeecar_distance_goes_over",
+				"text": "Distance goes over"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "distance",
+						"text": "Distance"
+					},
+					"dataType": "i4",
+					"name": "Distance",
+					"comparisson": ">",
+					"defaultValue": "",
+					"minValue": "0",
+					"suffix": {
+						"lang_tag": "meters",
+						"text": "meters"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_distance_goes_over",
+						"text": "_DEVICE_NAME_ distance from home goes over _ARGUMENT_VALUE_ meters"
+					}
+				}
+			]
+		},
+		{
+			"id":102,
+			"label": {
+				"lang_tag": "xeecar_distance_goes_below",
+				"text": "Distance goes below"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "distance",
+						"text": "Distance"
+					},
+					"dataType": "i4",
+					"name": "Distance",
+					"comparisson": "<",
+					"defaultValue": "",
+					"minValue": "0",
+					"suffix": {
+						"lang_tag": "meters",
+						"text": "meters"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_distance_goes_over",
+						"text": "_DEVICE_NAME_ distance from home goes below _ARGUMENT_VALUE_ meters"
+					}
+				}
+			]
+		},
+
+		{
+			"id": 103,
+			"label": {
+				"lang_tag": "ui7_xeecar_zone_enter",
+				"text": "Whenever _DEVICE_NAME_ enters a zone"
+			},
+			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "geofence_zone",
+						"text": "Zone"
+					},
+					"dataType": "string",
+					"name": "ZoneEnter",
+					"comparisson": "=",
+					"defaultValue": "",
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_enters_zone",
+						"text": "_DEVICE_NAME_ enters the zone _ARGUMENT_VALUE_"
+					}
+				}
+			]
+		},
+		{
+			"id": 104,
+			"label": {
+				"lang_tag": "ui7_xeecar_zone_exit",
+				"text": "Whenever _DEVICE_NAME_ exits a zone"
+			},
+			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "geofence_zone",
+						"text": "Zone"
+					},
+					"dataType": "string",
+					"name": "ZoneExit",
+					"comparisson": "=",
+					"defaultValue": "",
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_exits_zone",
+						"text": "_DEVICE_NAME_ exits the zone _ARGUMENT_VALUE_"
+					}
+				}
+			]
+		},
+
+		{
+			"id": 201,
+			"label": {
+				"lang_tag": "xeecar_fuel_level_goes_over",
+				"text": "Fuel level goes over"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "fuel_level",
+						"text": "Fuel level"
+					},
+					"dataType": "i4",
+					"name": "SignalFuelLevel",
+					"comparisson": ">",
+					"defaultValue": "",
+					"minValue": "0",
+					"suffix": {
+						"lang_tag": "liters",
+						"text": "liters"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_fuel_level_goes_over",
+						"text": "_DEVICE_NAME_ fuel level goes over _ARGUMENT_VALUE_ liters"
+					}
+				}
+			]
+		},
+		{
+			"id": 202,
+			"label": {
+				"lang_tag": "xeecar_fuel_level_goes_below",
+				"text": "Fuel level goes below"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "fuel_level",
+						"text": "Fuel level"
+					},
+					"dataType": "i4",
+					"name": "SignalFuelLevel",
+					"comparisson": "<",
+					"defaultValue": "",
+					"minValue": "0",
+					"suffix": {
+						"lang_tag": "liters",
+						"text": "liters"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_fuel_level_goes_over",
+						"text": "_DEVICE_NAME_ fuel level goes below _ARGUMENT_VALUE_ liters"
+					}
+				}
+			]
+		},
+
+		{
+			"id": 203,
+			"label": {
+				"lang_tag": "xeecar_signal_LockSts",
+				"text": "Lock status"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"dataType": "boolean",
+					"name": "SignalLockSts",
+					"comparisson": "=",
+					"defaultValue": "1",
+					"allowedValueList": [
+						{
+							"Off": "0",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_is_unlocked",
+								"text": "_DEVICE_NAME_ is unlocked"
+							}
+						},
+						{
+							"On": "1",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_is_locked",
+								"text": "_DEVICE_NAME_ is locked"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": 204,
+			"label": {
+				"lang_tag": "xeecar_signal_HazardSts",
+				"text": "Warnings status"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"dataType": "boolean",
+					"name": "SignalHazardSts",
+					"comparisson": "=",
+					"defaultValue": "1",
+					"allowedValueList": [
+						{
+							"Off": "0",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_warnings_are_off",
+								"text": "_DEVICE_NAME_ warings are off"
+							}
+						},
+						{
+							"On": "1",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_warnings_are_on",
+								"text": "_DEVICE_NAME_ warnings are on"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": 205,
+			"label": {
+				"lang_tag": "xeecar_signal_ignition_status",
+				"text": "Ignition status"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"dataType": "boolean",
+					"name": "SignalIgnitionSts",
+					"comparisson": "=",
+					"defaultValue": "1",
+					"allowedValueList": [
+						{
+							"Off": "0",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_engine_is_off",
+								"text": "_DEVICE_NAME_ engine is off"
+							}
+						},
+						{
+							"On": "1",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_engine_is_on",
+								"text": "_DEVICE_NAME_ engine is on"
+							}
+						}
+					]
+				}
+			]
+		},
+
+		{
+			"id": 206,
+			"label": {
+				"lang_tag": "xeecar_speed_goes_over",
+				"text": "Speed goes over"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "speed",
+						"text": "Speed"
+					},
+					"dataType": "i4",
+					"name": "SignalVehiculeSpeed",
+					"comparisson": ">",
+					"defaultValue": "0",
+					"suffix": {
+						"lang_tag": "km/h",
+						"text": "km/h"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_speed_goes_over",
+						"text": "_DEVICE_NAME_ speed goes over _ARGUMENT_VALUE_ km/h"
+					}
+				}
+			]
+		},
+		{
+			"id": 207,
+			"label": {
+				"lang_tag": "xeecar_speed_goes_below",
+				"text": "Speed goes below"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "speed",
+						"text": "Speed"
+					},
+					"dataType": "i4",
+					"name": "SignalVehiculeSpeed",
+					"comparisson": "<",
+					"defaultValue": "0",
+					"suffix": {
+						"lang_tag": "km/h",
+						"text": "km/h"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_speed_goes_below",
+						"text": "_DEVICE_NAME_ speed goes below _ARGUMENT_VALUE_ km/h"
+					}
+				}
+			]
+		},
+
+		{
+			"id": 208,
+			"label": {
+				"lang_tag": "xeecar_odometer_goes_over",
+				"text": "Odometer goes over"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "odometer",
+						"text": "Odometer"
+					},
+					"dataType": "i4",
+					"name": "SignalOdometer",
+					"comparisson": ">",
+					"defaultValue": "0",
+					"suffix": {
+						"lang_tag": "km",
+						"text": "km"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_odometer_goes_over",
+						"text": "_DEVICE_NAME_ odometer goes over _ARGUMENT_VALUE_ km"
+					}
+				}
+			]
+		},
+		{
+			"id": 209,
+			"label": {
+				"lang_tag": "xeecar_odometer_goes_below",
+				"text": "Odometer goes below"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "odometer",
+						"text": "Odometer"
+					},
+					"dataType": "i4",
+					"name": "SignalOdometer",
+					"comparisson": "<",
+					"defaultValue": "0",
+					"suffix": {
+						"lang_tag": "km",
+						"text": "km"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_odometer_goes_below",
+						"text": "_DEVICE_NAME_ odometer goes below _ARGUMENT_VALUE_ km"
+					}
+				}
+			]
+		},
+
+		{
+			"id": 210,
+			"label": {
+				"lang_tag": "xeecar_battery_voltage_goes_over",
+				"text": "Battery voltage goes over"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "BatteryVoltage",
+						"text": "Battery voltage"
+					},
+					"dataType": "i4",
+					"name": "SignalBatteryVoltage",
+					"comparisson": ">",
+					"defaultValue": "0",
+					"suffix": {
+						"lang_tag": "V",
+						"text": "V"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_battery_voltage_goes_over",
+						"text": "_DEVICE_NAME_ battery voltage goes over _ARGUMENT_VALUE_ V"
+					}
+				}
+			]
+		},
+		{
+			"id": 211,
+			"label": {
+				"lang_tag": "xeecar_battery_voltage_goes_below",
+				"text": "Battery voltage goes below"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "BatteryVoltage",
+						"text": "Battery voltage"
+					},
+					"dataType": "i4",
+					"name": "SignalBatteryVoltage",
+					"comparisson": "<",
+					"defaultValue": "0",
+					"suffix": {
+						"lang_tag": "V",
+						"text": "V"
+					},
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_battery_voltage_goes_below",
+						"text": "_DEVICE_NAME_ battery voltage goes below _ARGUMENT_VALUE_ V"
+					}
+				}
+			]
+		}
+	],
+	"device_type": "urn:schemas-upnp-org:device:XeeCar:1"
+}
