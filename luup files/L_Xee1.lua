@@ -70,12 +70,6 @@ local VARIABLE = {
 	CAR_CREATION_DATE = { "urn:upnp-org:serviceId:XeeCar1", "CreationDate", true },
 	CAR_LAST_UPDATE_DATE = { "urn:upnp-org:serviceId:XeeCar1", "LastUpdateDate", true },
 	-- Xee car location
-	--[[
-	CAR_LATITUDE = { "urn:upnp-org:serviceId:XeeCar1", "Latitude", true },
-	CAR_LONGITUDE = { "urn:upnp-org:serviceId:XeeCar1", "Longitude", true },
-	CAR_ALTITUDE = { "urn:upnp-org:serviceId:XeeCar1", "Altitude", true },
-	CAR_HEADING = { "urn:upnp-org:serviceId:XeeCar1", "Heading", true },
-	--]]
 	CAR_LATITUDE = { "urn:upnp-org:serviceId:Location1", "Latitude", true },
 	CAR_LONGITUDE = { "urn:upnp-org:serviceId:Location1", "Longitude", true },
 	CAR_ALTITUDE = { "urn:upnp-org:serviceId:Location1", "Altitude", true },
@@ -85,7 +79,7 @@ local VARIABLE = {
 	GEOFENCES = { "urn:upnp-org:serviceId:GeoFence1", "Fences", true },
 	CAR_DISTANCE = { "urn:upnp-org:serviceId:GeoFence1", "Distance", true },
 	CAR_DISTANCES = { "urn:upnp-org:serviceId:GeoFence1", "Distances", true },
-	CAR_ZONE_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIn", true },
+	CAR_ZONES_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZonesIn", true },
 	CAR_ZONE_ENTER = { "urn:upnp-org:serviceId:GeoFence1", "ZoneEnter", true },
 	CAR_ZONE_EXIT = { "urn:upnp-org:serviceId:GeoFence1", "ZoneExit", true },
 	-- Xee car accelerometer
@@ -124,6 +118,44 @@ local g_params = {
 	nbMaxTry = 2,
 	location = {}
 }
+
+local MAP_TEMPLATE = [[
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<!--
+	<link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+	<link rel="stylesheet" type="text/css" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	-->
+	<style type="text/css">
+		html { height: 100% }
+		body { height: 100%; margin: 0px; padding: 0px }
+		#map { height: 100% ; width:100%;}
+		.legend { background: white; margin: 10px; padding: 10px;
+			border: 2px solid #aaa;
+			-webkit-box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px; 
+			box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px; 
+		}
+		.legend-title { font-weight: bold; }
+		.legend-selected { background: yellow; }
+	</style>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js" ></script>
+	<!--
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js" ></script>
+	-->
+	<script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3.13&sensor=false"></script>
+	<script type="text/javascript" src="J_Xee1_map.js"></script> 
+</head>
+ 
+<body onload="XeeMap.initialize()">
+	<div id="map"></div>
+	<div id="legend-zones" class="legend"></div>
+	<div id="legend-cars" class="legend"></div>
+</body>
+ 
+</html>
+]]
 
 
 -- **************************************************
@@ -884,9 +916,9 @@ Geoloc = {
 	end,
 
 	getDistance = function (p1, p2)
-		local x1, x2 = p1.longitude, p2.longitude
-		local y1, y2 = p1.latitude,  p2.latitude
-		local z1, z2 = p1.altitude,  p2.altitude
+		local x1, x2 = tonumber(p1.longitude), tonumber(p2.longitude)
+		local y1, y2 = tonumber(p1.latitude),  tonumber(p2.latitude)
+		local z1, z2 = tonumber(p1.altitude),  tonumber(p2.altitude)
 		local dx  = (x2 - x1) * pi_180_earth_radius * math.cos( (y2 + y1) * pi_360 )
 		local dy  = (y2 - y1) * pi_180_earth_radius
 		local dz = z1 and z2 and (z2 - z1) or 0
@@ -900,26 +932,56 @@ Geoloc = {
 
 
 -- Home;50.00;0.0;1000|{{name}};{{latitude}};{{longitude}};{{radius}}
-g_geoFences = {}
+g_geofences = {}
 
-GeoFences = {
-	init = function( strGeoFences )
-		g_geoFences = {}
-		for _, strGeoFence in ipairs( string.split( strGeoFences, "|" ) ) do
-			local geoParams = string.split( strGeoFence, ";" )
-			table.insert( g_geoFences, {
+Geofences = {
+	get = function( deviceId )
+		local strGeofences = Variable.get( deviceId, VARIABLE.GEOFENCES )
+		g_geofences = {}
+		for _, strGeofence in ipairs( string.split( strGeofences, "|" ) ) do
+			local geoParams = string.split( strGeofence, ";" )
+			table.insert( g_geofences, {
 				name      = geoParams[1],
 				latitude  = tonumber( geoParams[2] ),
 				longitude = tonumber( geoParams[3] ),
 				radius    = tonumber( geoParams[4] or 1000 ) or 1000
 			} )
 		end
-		debug( "GeoFences : " .. json.encode( g_geoFences ), "GeoFences.init")
+		debug( "Geofences : " .. json.encode( g_geofences ), "Geofences.load")
+	end,
+
+	set = function( deviceId, geofences )
+		if ( type( geofences ) ~= "table" ) then
+			return false, "geofences are empty"
+		end
+		local strGeofences = ""
+		local isOk, strError = true, nil
+		for i, geofence in ipairs( geofences ) do
+			if ( i > 1 ) then
+				strGeofences = strGeofences .. "|"
+			end
+			if ( geofence.name and geofence.latitude and geofence.longitude and geofence.radius ) then
+				strGeofences = strGeofences ..
+							tostring( geofence.name ) ..
+						";" .. tostring( geofence.latitude ) ..
+						";" .. tostring( geofence.longitude ) ..
+						";" .. tostring( geofence.radius )
+			else
+				isOk = false
+				strError = "Geofence format error"
+				break
+			end
+		end
+		if isOk then
+			Variable.set( deviceId, VARIABLE.GEOFENCES, strGeofences )
+			Geofences.get( deviceId )
+		end
+		return isOk, strError
 	end,
 
 	update = function( deviceId )
-		if ( #g_geoFences == 0 ) then
-			debug( "No geofence", "GeoFences.update")
+		if ( #g_geofences == 0 ) then
+			debug( "No geofence", "Geofences.update")
 			return false
 		end
 		local location = {
@@ -927,33 +989,33 @@ GeoFences = {
 			longitude = Variable.get( deviceId, VARIABLE.CAR_LONGITUDE )
 		}
 		local distances = {}
-		local zonesIn = string.split( ( Variable.get( deviceId, VARIABLE.CAR_ZONE_IN ) or "" ) , ";" )
+		local zonesIn = string.split( ( Variable.getOrInit( deviceId, VARIABLE.CAR_ZONES_IN, "" ) or "" ) , ";" )
 		local zonesEnter, zonesExit = {}, {}
 		local somethingHasChanged = false
-		for _, geoFence in ipairs( g_geoFences ) do
-			local distance = Geoloc.getDistance( location, geoFence )
-			local wasIn, pos = table.contains( zonesIn, geoFence.name ) 
-			if ( distance <= geoFence.radius ) then
+		for _, geofence in ipairs( g_geofences ) do
+			local distance = Geoloc.getDistance( location, geofence )
+			local wasIn, pos = table.contains( zonesIn, geofence.name ) 
+			if ( distance <= geofence.radius ) then
 				-- Device is in the zone
 				if not wasIn then
-					debug( "Device #" .. tostring( deviceId ) .. " enters the zone '" ..  geoFence.name .. "'", "GeoFences.update")
-					table.insert( zonesIn, geoFence.name )
-					table.insert( zonesEnter, geoFence.name )
+					debug( "Device #" .. tostring( deviceId ) .. " enters the zone '" ..  geofence.name .. "'", "Geofences.update")
+					table.insert( zonesIn, geofence.name )
+					table.insert( zonesEnter, geofence.name )
 					somethingHasChanged = true
 				end
 			else
 				-- Device is not in the zone
 				if wasIn then
-					debug( "Device #" .. tostring( deviceId ) .. " exits the zone '" ..  geoFence.name .. "'", "GeoFences.update")
+					debug( "Device #" .. tostring( deviceId ) .. " exits the zone '" ..  geofence.name .. "'", "Geofences.update")
 					table.remove( zonesIn, pos )
-					table.insert( zonesExit, geoFence.name )
+					table.insert( zonesExit, geofence.name )
 					somethingHasChanged = true
 				end
 			end
-			table.insert( distances, { geoFence.name, distance } )
+			table.insert( distances, { geofence.name, distance } )
 		end
 		if somethingHasChanged then
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_IN, table.concat( zonesIn, ";" ) )
+			Variable.set( deviceId, VARIABLE.CAR_ZONES_IN, table.concat( zonesIn, ";" ) )
 			Variable.set( deviceId, VARIABLE.CAR_ZONE_ENTER, table.concat( zonesEnter, ";" ) )
 			Variable.set( deviceId, VARIABLE.CAR_ZONE_EXIT, table.concat( zonesExit, ";" ) )
 		end
@@ -973,20 +1035,20 @@ GeoFences = {
 		end
 		Variable.set( deviceId, VARIABLE.CAR_DISTANCES, strDistances )
 		-- Get the distance of the main zone (first)
-		Variable.set( deviceId, VARIABLE.CAR_DISTANCE, distances[1][1] )
+		Variable.set( deviceId, VARIABLE.CAR_DISTANCE, distances[1][2] )
 	end,
 
 	getDistances = function( location )
 		local distances = {}
-		for _, geoFence in ipairs( g_geoFences ) do
-			table.insert( distances, { geoFence.name, Geoloc.getDistance( location, geoFence ) } )
+		for _, geofence in ipairs( g_geofences ) do
+			table.insert( distances, { geofence.name, Geoloc.getDistance( location, geofence ) } )
 		end
 		return distances
 	end,
 
 	getDistancesToString = function( location )
 		local strDistances = ""
-		for i, distance in ipairs( GeoFences.getDistances( location ) ) do
+		for i, distance in ipairs( Geofences.getDistances( location ) ) do
 			if ( i > 1 ) then
 				strDistances = strDistances .. "|"
 			end
@@ -1018,7 +1080,7 @@ Cars = {
 		local knownCars = {}
 		for deviceId, device in pairs( luup.devices ) do
 			if ( device.device_num_parent == g_parentDeviceId ) then
-				knownCars[ device.id ] = true
+				knownCars[ tostring( device.id ) ] = true
 			end
 		end
 
@@ -1026,13 +1088,13 @@ Cars = {
 		local ptr = luup.chdev.start( g_parentDeviceId )
 
 		for _, car in ipairs( cars ) do
-			car.id = tostring( car.id )
-			if ( knownCars[ car.id ] ) then
+			local carId = tostring( car.id )
+			if ( knownCars[ carId ] ) then
 				-- Already known car - Keep it
-				debug( "Keep car #" .. car.id, "Cars.sync" )
-				luup.chdev.append( g_parentDeviceId, ptr, car.id, "", "", "", "", "", false )
+				debug( "Keep car #" .. carId, "Cars.sync" )
+				luup.chdev.append( g_parentDeviceId, ptr, carId, "", "", "", "", "", false )
 			else
-				debug( "Add car #" .. car.id .. " - " .. json.encode( car ), "Cars.sync" )
+				debug( "Add car #" .. carId .. " - " .. json.encode( car ), "Cars.sync" )
 				local parameters = ""
 				for _, param in ipairs({
 					{ "COMM_FAILURE", "0" },
@@ -1051,7 +1113,7 @@ Cars = {
 					parameters = parameters .. VARIABLE[param[1]][1] .. "," .. VARIABLE[param[1]][2] .. "=" .. tostring(param[2] or "") .. "\n"
 				end
 				luup.chdev.append(
-					g_parentDeviceId, ptr, car.id,
+					g_parentDeviceId, ptr, carId,
 					car.name, "", DEVICE_TYPE.XEE_CAR.deviceFile, "",
 					parameters,
 					false
@@ -1073,29 +1135,25 @@ Cars = {
 		g_indexCars = {}
 		for deviceId, device in pairs( luup.devices ) do
 			if ( device.device_num_parent == g_parentDeviceId ) then
-				local carId = device.id
-				if ( carId == nil ) then
-					debug( "Found child device #".. tostring( deviceId ) .."(".. device.description .."), but carId '" .. tostring( device.id ) .. "' is null", "Cars.retrieve" )
+				local carId = tostring( device.id or "" )
+				if ( carId == "" ) then
+					debug( "Found child device #".. tostring( deviceId ) .."(".. device.description .."), but carId '" .. tostring( device.id ) .. "' is empty", "Cars.retrieve" )
 				else
-					local car = g_indexCars[ tostring( carId ) ]
+					local car = g_indexCars[ carId ]
 					if ( car == nil ) then
 						car = {
-							id = carId,
+							id = tonumber( carId ),
 							name = device.description,
 							deviceId = deviceId,
 							--status = 1,
-							distance = 0,
 							status = {},
 							nextPollDate = 0
 						}
 						table.insert( g_cars, car )
-						g_indexCars[ tostring( carId ) ] = car
-						debug( "Found car #".. tostring( carId ) .."(".. device.description ..")", "Cars.retrieve" )
+						g_indexCars[ carId ] = car
+						debug( "Found car #".. carId .."(".. device.description ..")", "Cars.retrieve" )
 					else
-						warning(
-							"Found car #".. tostring( carId ) .. "(".. device.description ..") but it was already registered",
-							"Cars.retrieve"
-						)
+						warning( "Found car #".. carId .. "(".. device.description ..") but it was already registered", "Cars.retrieve" )
 					end
 				end
 			end
@@ -1112,9 +1170,10 @@ Cars = {
 
 	-- Update the informations and signals of a car
 	update = function( carId )
-		local car = g_indexCars[ tostring( carId ) ]
+		local carId = tostring( carId )
+		local car = g_indexCars[ carId ]
 		if ( car == nil ) then
-			warning( "Car #" .. tostring( carId ) .. " is unknown", "Cars.update" )
+			warning( "Car #" .. carId .. " is unknown", "Cars.update" )
 			return false
 		end
 		debug( "Update car #" .. carId, "Cars.update" )
@@ -1129,8 +1188,6 @@ Cars = {
 				Variable.set( car.deviceId, VARIABLE.CAR_ALTITUDE, carStatus.location.altitude )
 				Variable.set( car.deviceId, VARIABLE.CAR_HEADING, carStatus.location.heading )
 				Variable.set( car.deviceId, VARIABLE.CAR_LOCATION_DATE, API.convertToTimestamp( carStatus.location.date ) )
-				-- Distances from geofences (centers)
-				GeoFences.update( car.deviceId )
 			end
 			-- TODO : accelerometer ?
 			-- Signals
@@ -1146,12 +1203,17 @@ Cars = {
 					end
 				end
 			end
+			-- Geofences
+			if ( carStatus.location ) then
+				Geofences.update( car.deviceId )
+				carStatus.zonesIn = Variable.get( car.deviceId, VARIABLE.CAR_ZONES_IN )
+			end
 			luup.set_failure( 0, car.deviceId )
 			car.status = carStatus
 			--car.status = 1
 			return true
 		else
-			error( "Can not retrieve car #" .. tostring( carId ) .. "(" .. tostring( car.name ) .. ") status", "Cars.update" )
+			error( "Can not retrieve car #" .. carId .. "(" .. tostring( car.name ) .. ") status", "Cars.update" )
 			luup.set_failure( 1, car.deviceId )
 			car.status = {}
 			--car.status = 0
@@ -1214,11 +1276,38 @@ local _handlerCommands = {
 	end,
 
 	["getCars"] = function( params, outputFormat )
-		local cars = {}
-		for _, car in ipairs( g_cars ) do
-			table.insert( cars, car )
+		return tostring( json.encode( g_cars ) ), "application/json"
+	end,
+
+	-- DEBUG
+	["setCarLocation"] = function( params, outputFormat )
+		local car = g_indexCars[ tostring( params["carId"] ) ]
+		car.status.location.latitude = tonumber( params["latitude"] )
+		Variable.set( car.deviceId, VARIABLE.CAR_LATITUDE, car.status.location.latitude )
+		car.status.location.longitude = tonumber( params["longitude"] )
+		Variable.set( car.deviceId, VARIABLE.CAR_LONGITUDE, car.status.location.longitude )
+		Geofences.update( car.deviceId )
+		car.status.zonesIn = Variable.get( car.deviceId, VARIABLE.CAR_ZONES_IN )
+	end,
+
+	["getGeofences"] = function( params, outputFormat )
+		return tostring( json.encode( g_geofences ) ), "application/json"
+	end,
+
+	["setGeofences"] = function( params, outputFormat )
+		local geofences
+		local isOk, strError = true, nil
+		local decodeSuccess, jsonGeofences = pcall( json.decode, url.unescape( params["newGeofences"] or "" ) )
+		if ( decodeSuccess and jsonGeofences ) then
+			isOk, strError = Geofences.set( g_parentDeviceId, jsonGeofences )
+		else
+			isOk, strError = false, jsonGeofences
 		end
-		return tostring( json.encode( cars ) ), "application/json"
+		return tostring( json.encode( { result = isOk, ["error"] = strError } ) ), "application/json"
+	end,
+
+	["getMap"] = function( params, outputFormat )
+		return tostring( MAP_TEMPLATE ), "text/html"
 	end,
 
 	["getErrors"] = function( params, outputFormat )
@@ -1292,8 +1381,10 @@ local function _initPluginInstance()
 		g_params.pollSettings[ 3 ] = XEE_MIN_POLL_INTERVAL_FAR_AWAY
 	end
 
+	-- Geofences
 	local defaultGeoFence = "Home;" .. luup.latitude .. ";" .. luup.longitude .. ";1000"
-	GeoFences.init( Variable.getOrInit( g_parentDeviceId, VARIABLE.GEOFENCES, defaultGeoFence ) )
+	Variable.getOrInit( g_parentDeviceId, VARIABLE.GEOFENCES, defaultGeoFence )
+	Geofences.get( g_parentDeviceId )
 
 	g_params.location = {
 		latitude = luup.latitude,

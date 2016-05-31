@@ -33,29 +33,86 @@
 				"lang_tag": "ui7_tabname_control",
 				"text": "Control"
 			},
-			"Position": "0",
+			"Position": 0,
 			"TabType": "flash",
-			"top_navigation_tab": "1",
+			"top_navigation_tab": 1,
 			"SceneGroup": [
 				{
-					"id": "1"
+					"id": 1
 				}
 			],
 			"ControlGroup": [
 				{
-					"id": "1",
-					"scenegroup": "1"
+					"id": 1,
+					"scenegroup": 1
 				}
 			],
 			"Control": [
+				{
+					"ControlGroup": 1,
+					"ControlType": "label",
+					"top": 0,
+					"left": 0,
+					"text_align": "left",
+					"Label": {
+						"lang_tag": "xeecar_distances",
+						"text": "Distances"
+					},
+					"Display": {
+						"Top": 25,
+						"Left": 10
+					}
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "variable",
+					"top": 0,
+					"left": 0,
+					"x": 1,
+					"text_align": "left",
+					"Display": {
+						"Service": "urn:upnp-org:serviceId:GeoFence1",
+						"Variable": "Distances",
+						"Top": 25,
+						"Left": 100
+					}
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "line_break"
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "label",
+					"text_align": "left",
+					"Label": {
+						"lang_tag": "xeecar_zones_in",
+						"text": "In zones"
+					},
+					"Display": {
+						"Top": 40,
+						"Left": 10
+					}
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "variable",
+					"text_align": "left",
+					"Display": {
+						"Service": "urn:upnp-org:serviceId:GeoFence1",
+						"Variable": "ZonesIn",
+						"Top": 40,
+						"Left": 100
+					}
+				}
 			]
 		},
 		{
 			"Label": {
-				"lang_tag": "ui7_xee_car",
+				"lang_tag": "xee_car",
 				"text": "Car"
 			},
-			"Position": "1",
+			"Position": 1,
 			"top_navigation_tab": "1",
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
@@ -63,23 +120,43 @@
 		},
 		{
 			"Label": {
-				"lang_tag": "settings",
-				"text": "Settings"
-			},
-			"Position": "2",
-			"TabType": "javascript",
-			"ScriptName": "shared.js",
-			"Function": "simple_device"
-		},
-		{
-			"Label": {
 				"lang_tag": "advanced",
 				"text": "Advanced"
 			},
-			"Position": "3",
+			"Position": 2,
 			"TabType": "javascript",
 			"ScriptName": "shared.js",
 			"Function": "advanced_device"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_logs",
+				"text": "Logs"
+			},
+			"Position": 3,
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_logs"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_notifications",
+				"text": "Notifications"
+			},
+			"Position": 4,
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_notifications"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_device_scenes",
+				"text": "Scenes"
+			},
+			"Position": 5,
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_scenes"
 		}
 	],
 	"eventList2":[

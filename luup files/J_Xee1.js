@@ -1,4 +1,4 @@
-//@ sourceURL=J_Xee1.js
+//# sourceURL=J_Xee1.js
 
 /**
  * This file is part of the plugin Xee.
@@ -77,7 +77,9 @@ Signals and position of each vehicule are periodically updated. This refresh int
 ",
 		"Syncing cars": "\
 Cars have been synchronized with your Xee account...<br/>\
-... wait until the reload of Luup engine"
+... wait until the reload of Luup engine",
+		"Explanation for map": "\
+TODO"
 	};
 
 	function _T( t ) {
@@ -91,7 +93,7 @@ Cars have been synchronized with your Xee account...<br/>\
 	// Inject plugin specific CSS rules
 	// http://www.utf8icons.com/
 	Utils.injectCustomCSS( "Xee", '\
-.xee-panel { position: relative; padding: 5px; }\
+.xee-panel { padding: 5px; }\
 .xee-panel label { font-weight: normal }\
 .xee-panel td { padding: 5px; }\
 .xee-panel .icon { vertical-align: middle; }\
@@ -107,6 +109,7 @@ Cars have been synchronized with your Xee account...<br/>\
 .xee-toolbar { height: 25px; text-align: right; }\
 .xee-toolbar button { display: inline-block; }\
 .xee-step { padding-bottom: 10px; }\
+#xee-map { width: 100%; height: 600px; margin: 10px 0px; }\
 #xee-authentification-params { width: 80%; }\
 #xee-donate { text-align: center; width: 70%; margin: auto; }\
 #xee-donate form { height: 50px; }\
@@ -132,7 +135,7 @@ Cars have been synchronized with your Xee account...<br/>\
 		var isoString = t.toISOString();
 		return isoString;
 	}
-	
+
 	/**
 	 * 
 	 */
@@ -340,6 +343,34 @@ Cars have been synchronized with your Xee account...<br/>\
 	}
 
 	// *************************************************************************************************
+	// Map
+	// *************************************************************************************************
+
+	function _showMap( deviceId ) {
+		_deviceId = deviceId;
+		try {
+			api.setCpanelContent(
+					'<div id="xee-map-panel" class="xee-panel">'
+				+		'<div class="xee-toolbar">'
+				+			'<button type="button" class="xee-help"><span class="icon icon-help"></span>Help</button>'
+				+		'</div>'
+				+		'<div class="xee-explanation xee-hidden">'
+				+			_T( "Explanation for map" )
+				+		'</div>'
+				+		'<iframe id="xee-map"src="' + api.getDataRequestURL() + '?id=lr_Xee&command=getMap"></iframe>'
+				+	'</div>'
+			);
+			// Manage UI events
+			$( "#xee-map-panel" )
+				.on( "click", ".xee-help" , function() {
+					$( ".xee-explanation" ).toggleClass( "xee-hidden" );
+				} );
+		} catch (err) {
+			Utils.logError('Error in Xee.showMap(): ' + err);
+		}
+	}
+
+	// *************************************************************************************************
 	// Errors
 	// *************************************************************************************************
 
@@ -509,16 +540,22 @@ Cars have been synchronized with your Xee account...<br/>\
 		);
 	}
 
+	// *************************************************************************************************
+	// Zones
+	// *************************************************************************************************
+
 	function _getNearestZone( device ) {
 		var strDistances = MultiBox.getStatus( device, "urn:upnp-org:serviceId:GeoFence1", "Distances" );
 		if ( ( strDistances == null ) || ( strDistances === "" ) ) {
 			return;
 		}
+		var strZonesIn = MultiBox.getStatus( device, "urn:upnp-org:serviceId:GeoFence1", "ZonesIn" );
+		var zonesIn = strZonesIn ? strZonesIn.split( ";" ) : [];
 		var distances = [];
 		$.map( strDistances.split( "|" ), function( strDistance, i ) {
 			var params = strDistance.split( ";" );
 			if ( params.length > 1 ) {
-				distances.push( [ params[0], parseInt( params[1], 10 ) ] );
+				distances.push( [ params[0], parseInt( params[1], 10 ), ( $.inArray( params[0], zonesIn ) > -1 ? true : false ) ] );
 			}
 		} );
 		distances.sort( function( d1, d2 ) { return ( d1[1] - d2[1] ) } );
@@ -534,6 +571,7 @@ Cars have been synchronized with your Xee account...<br/>\
 		onDeviceStatusChanged: _onDeviceStatusChanged,
 		showAuthentification: _showAuthentification,
 		showCars: _showCars,
+		showMap: _showMap,
 		showCar: _showCar,
 		showErrors: _showErrors,
 		showDonate: _showDonate,
@@ -561,7 +599,7 @@ Cars have been synchronized with your Xee account...<br/>\
 				+		'<div>Updated ' + $.timeago( lastUpdate * 1000 ) + '</div>'
 				+		'<div>';
 			if ( distance ) {
-				html +=		distance[0] + '@' + ( distance[1] > 999 ? ( distance[1] / 1000 ) + 'km' : distance[1] + 'm' );
+				html +=		( distance[2] ? '(in)' : '(out)' ) + distance[0] + '@' + ( distance[1] > 999 ? ( distance[1] / 1000 ) + 'km' : distance[1] + 'm' );
 				html +=			' <span class="small">(' + $.timeago( locationDate * 1000 ) + ')</span>'
 			}
 			html +=		'</div>'

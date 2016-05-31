@@ -24,72 +24,61 @@
 			]
 		}
 	],
-	"x": "2",
-	"y": "4",
-	"inScene": "0",
+	"x": 2,
+	"y": 4,
+	"inScene": 0,
 	"Tabs": [
 		{
 			"Label": {
 				"lang_tag": "ui7_tabname_control",
 				"text": "Control"
 			},
-			"Position": "0",
+			"Position": 0,
 			"TabType": "flash",
-			"top_navigation_tab": "1",
+			"top_navigation_tab": 1,
 			"SceneGroup": [
 				{
-					"id": "1"
+					"id": 1
 				}
 			],
 			"ControlGroup": [
 				{
-					"id": "1",
-					"scenegroup": "1"
+					"id": 1,
+					"scenegroup": 1
 				}
 			],
 			"Control": [
 				{
-					"ControlGroup": "1",
+					"ControlGroup": 1,
 					"ControlType": "label",
-					"top": "0",
-					"left": "0",
+					"top": 0,
+					"left": 0,
 					"text_align": "left",
 					"Label": {
-						"lang_tag": "ui7_xee_version",
+						"lang_tag": "xee_version",
 						"text": "Version"
 					},
 					"Display": {
 						"Top": 25,
-						"Left": 10,
-						"Width": 50,
-						"Height": 20
+						"Left": 10
 					}
 				},
 				{
-					"ControlGroup": "1",
+					"ControlGroup": 1,
 					"ControlType": "variable",
-					"top": "0",
-					"left": "0",
-					"x": "1",
+					"top": 0,
+					"left": 0,
+					"x": 1,
 					"text_align": "left",
 					"Display": {
 						"Service": "urn:upnp-org:serviceId:Xee1",
 						"Variable": "PluginVersion",
 						"Top": 25,
-						"Left": 80,
-						"Width": 50,
-						"Height": 20
+						"Left": 100
 					}
 				},
 				{
-					"ControlGroup": 1,
-					"ControlType": "line_break"
-				},
-				{
-					"ControlGroup": "1",
 					"ControlType": "label",
-					"top": "0",
-					"left": "0",
 					"text_align": "left",
 					"Label": {
 						"lang_tag": "ui7_last_update",
@@ -97,58 +86,109 @@
 					},
 					"Display": {
 						"Top": 40,
-						"Left": 10,
-						"Width": 50,
-						"Height": 20
+						"Left": 10
 					}
 				},
 				{
-					"ControlGroup": "1",
 					"ControlType": "variable",
-					"top": "0",
-					"left": "0",
-					"x": "1",
 					"text_align": "left",
 					"Display": {
 						"Service": "urn:upnp-org:serviceId:Xee1",
 						"Variable": "LastUpdateDate",
 						"Top": 40,
-						"Left": 80,
-						"Width": 50,
-						"Height": 20
+						"Left": 100
 					}
 				},
+				{
+					"ControlType": "label",
+					"text_align": "left",
+					"Label": {
+						"lang_tag": "ui7_last_message",
+						"text": "Last message"
+					},
+					"Display": {
+						"Top": 55,
+						"Left": 10
+					}
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "variable",
+					"text_align": "left",
+					"Display": {
+						"Service": "urn:upnp-org:serviceId:Xee1",
+						"Variable": "LastMessage",
+						"Top": 55,
+						"Left": 100
+					}
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "line_break"
+				},
+				{
+					"ControlType": "label",
+					"text_align": "left",
+					"Label": {
+						"lang_tag": "ui7_last_error",
+						"text": "Last error"
+					},
+					"Display": {
+						"Top": 70,
+						"Left": 10
+					}
+				},
+				{
+					"ControlGroup": 1,
+					"ControlType": "variable",
+					"text_align": "left",
+					"Display": {
+						"Service": "urn:upnp-org:serviceId:Xee1",
+						"Variable": "LastError",
+						"Top": 70,
+						"Left": 100
+					}
+				}
 			]
 		},
 		{
 			"Label": {
-				"lang_tag": "ui7_xee_authentification",
+				"lang_tag": "xee_authentification",
 				"text": "Authentification"
 			},
-			"Position": "1",
-			"top_navigation_tab": "1",
+			"Position": 1,
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
 			"Function": "Xee.showAuthentification"
 		},
 		{
 			"Label": {
-				"lang_tag": "ui7_xee_cars",
+				"lang_tag": "xee_cars",
 				"text": "Cars"
 			},
-			"Position": "2",
-			"top_navigation_tab": "1",
+			"Position": 2,
+			"top_navigation_tab": 1,
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
 			"Function": "Xee.showCars"
 		},
 		{
 			"Label": {
+				"lang_tag": "map",
+				"text": "Map"
+			},
+			"Position": 3,
+			"TopNavigationTab": 1,
+			"TabType": "javascript",
+			"ScriptName": "J_Xee1.js",
+			"Function": "Xee.showMap"
+		},
+		{
+			"Label": {
 				"lang_tag": "ui7_xee_errors",
 				"text": "Errors"
 			},
-			"Position": "3",
-			"top_navigation_tab": "1",
+			"Position": 4,
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
 			"Function": "Xee.showErrors"
@@ -158,31 +198,50 @@
 				"lang_tag": "ui7_donate",
 				"text": "Donate"
 			},
-			"Position": "4",
-			"top_navigation_tab": "1",
+			"Position": 5,
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
 			"Function": "Xee.showDonate"
 		},
 		{
 			"Label": {
-				"lang_tag": "settings",
-				"text": "Settings"
-			},
-			"Position": "5",
-			"TabType": "javascript",
-			"ScriptName": "shared.js",
-			"Function": "simple_device"
-		},
-		{
-			"Label": {
 				"lang_tag": "advanced",
 				"text": "Advanced"
 			},
-			"Position": "6",
+			"Position": 6,
 			"TabType": "javascript",
 			"ScriptName": "shared.js",
 			"Function": "advanced_device"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_logs",
+				"text": "Logs"
+			},
+			"Position": 7,
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_logs"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_notifications",
+				"text": "Notifications"
+			},
+			"Position": 8,
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_notifications"
+		},
+		{
+			"Label": {
+				"lang_tag": "ui7_device_scenes",
+				"text": "Scenes"
+			},
+			"Position": 9,
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_scenes"
 		}
 	],
 	"eventList2":[
