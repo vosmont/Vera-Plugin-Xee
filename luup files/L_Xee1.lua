@@ -5,20 +5,20 @@
   This code is released under the MIT License, see LICENSE.
 --]]
 
-module("L_Xee1", package.seeall)
+module( "L_Xee1", package.seeall )
 
-local json = require("dkjson")
-local https = require("ssl.https")
-local ltn12 = require("ltn12")
-local url = require("socket.url")
+local json = require( "dkjson" )
+local https = require( "ssl.https" )
+local ltn12 = require( "ltn12" )
+local Url = require( "socket.url" )
 
--------------------------------------------
+-- **************************************************
 -- Plugin constants
--------------------------------------------
+-- **************************************************
 
 _NAME = "Xee"
 _DESCRIPTION = "Add your cars in your scenes"
-_VERSION = "0.1"
+_VERSION = "0.3"
 
 local XEE_CLIENT_ID = "A7V3mOLy8Qm36nncz6Hy"
 local XEE_AUTH_URL = "https://cloud.xee.com/v3/auth/auth"
@@ -29,9 +29,9 @@ local XEE_MIN_POLL_INTERVAL_AFTER_ERROR = 60
 local XEE_MIN_POLL_INTERVAL_FAR_AWAY = 700
 local XEE_MIN_INTERVAL_BETWEEN_REQUESTS = 1
 
-------------------------------------------------------------------------------------------------------------------------
+-- **************************************************
 -- Constants
-------------------------------------------------------------------------------------------------------------------------
+-- **************************************************
 
 -- This table defines all device variables that are used by the plugin
 -- Each entry is a table of 4 elements:
@@ -94,9 +94,9 @@ local DEVICE_TYPE = {
 		deviceType = "urn:schemas-upnp-org:device:XeeCar:1", deviceFile = "D_XeeCar1.xml"
 	}
 }
-local function _getDeviceTypeInfos(deviceType)
-	for deviceTypeName, deviceTypeInfos in pairs(DEVICE_TYPE) do
-		if (deviceTypeInfos.deviceType == deviceType) then
+local function _getDeviceTypeInfos( deviceType )
+	for deviceTypeName, deviceTypeInfos in pairs( DEVICE_TYPE ) do
+		if ( deviceTypeInfos.deviceType == deviceType ) then
 			return deviceTypeInfos
 		end
 	end
@@ -124,26 +124,21 @@ local MAP_TEMPLATE = [[
 <html>
 <head>
 	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-	<!--
-	<link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
 	<link rel="stylesheet" type="text/css" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
-	-->
 	<style type="text/css">
 		html { height: 100% }
 		body { height: 100%; margin: 0px; padding: 0px }
 		#map { height: 100% ; width:100%;}
 		.legend { background: white; margin: 10px; padding: 10px;
 			border: 2px solid #aaa;
-			-webkit-box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px; 
-			box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px; 
+			-webkit-box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px;
+			box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px;
+			min-width: 170px;
 		}
 		.legend-title { font-weight: bold; }
-		.legend-selected { background: yellow; }
+		.legend-content { margin-top: 5px; }
 	</style>
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js" ></script>
-	<!--
-	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js" ></script>
-	-->
 	<script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3.13&sensor=false"></script>
 	<script type="text/javascript" src="J_Xee1_map.js"></script> 
 </head>
@@ -163,33 +158,33 @@ local MAP_TEMPLATE = [[
 -- **************************************************
 
 -- Merges (deeply) the contents of one table (t2) into another (t1)
-local function table_extend (t1, t2)
-	if ((t1 == nil) or (t2 == nil)) then
+local function table_extend( t1, t2 )
+	if ( ( t1 == nil ) or ( t2 == nil ) ) then
 		return
 	end
-	for key, value in pairs(t2) do
-		if (type(value) == "table") then
-			if (type(t1[key]) == "table") then
-				t1[key] = table_extend(t1[key], value)
+	for key, value in pairs( t2 ) do
+		if ( type( value ) == "table" ) then
+			if ( type( t1[key] ) == "table" ) then
+				t1[key] = table_extend( t1[key], value )
 			else
-				t1[key] = table_extend({}, value)
+				t1[key] = table_extend( {}, value )
 			end
-		elseif (value ~= nil) then
+		elseif ( value ~= nil ) then
 			t1[key] = value
 		end
 	end
 	return t1
 end
 
-local table = table_extend({}, table) -- do not pollute original "table"
+local table = table_extend( {}, table ) -- do not pollute original "table"
 do -- Extend table
 	table.extend = table_extend
 
 	-- Checks if a table contains the given item.
 	-- Returns true and the key / index of the item if found, or false if not found.
-	function table.contains (t, item)
-		for k, v in pairs(t) do
-			if (v == item) then
+	function table.contains( t, item )
+		for k, v in pairs( t ) do
+			if ( v == item ) then
 				return true, k
 			end
 		end
@@ -197,12 +192,12 @@ do -- Extend table
 	end
 
 	-- Checks if table contains all the given items (table).
-	function table.containsAll (t1, items)
-		if ((type(t1) ~= "table") or (type(t2) ~= "table")) then
+	function table.containsAll( t1, items )
+		if ( ( type( t1 ) ~= "table" ) or ( type( t2 ) ~= "table" ) ) then
 			return false
 		end
-		for _, v in pairs(items) do
-			if not table.contains(t1, v) then
+		for _, v in pairs( items ) do
+			if not table.contains( t1, v ) then
 				return false
 			end
 		end
@@ -210,29 +205,29 @@ do -- Extend table
 	end
 
 	-- Appends the contents of the second table at the end of the first table
-	function table.append (t1, t2, noDuplicate)
-		if ((t1 == nil) or (t2 == nil)) then
+	function table.append( t1, t2, noDuplicate )
+		if ( ( t1 == nil ) or ( t2 == nil ) ) then
 			return
 		end
 		local table_insert = table.insert
 		table.foreach(
 			t2,
-			function (_, v)
-				if (noDuplicate and table.contains(t1, v)) then
+			function ( _, v )
+				if ( noDuplicate and table.contains( t1, v ) ) then
 					return
 				end
-				table_insert(t1, v)
+				table_insert( t1, v )
 			end
 		)
 		return t1
 	end
 
 	-- Extracts a subtable from the given table
-	function table.extract (t, start, length)
-		if (start < 0) then
+	function table.extract( t, start, length )
+		if ( start < 0 ) then
 			start = #t + start + 1
 		end
-		length = length or (#t - start + 1)
+		length = length or ( #t - start + 1 )
 
 		local t1 = {}
 		for i = start, start + length - 1 do
@@ -241,26 +236,26 @@ do -- Extend table
 		return t1
 	end
 
-	function table.concatChar (t)
+	function table.concatChar( t )
 		local res = ""
 		for i = 1, #t do
-			res = res .. string.char(t[i])
+			res = res .. string.char( t[i] )
 		end
 		return res
 	end
 
 	-- Concatenates a table of numbers into a string with Hex separated by the given separator.
-	function table.concatHex (t, sep, start, length)
+	function table.concatHex( t, sep, start, length )
 		sep = sep or "-"
 		start = start or 1
-		if (start < 0) then
+		if ( start < 0 ) then
 			start = #t + start + 1
 		end
-		length = length or (#t - start + 1)
-		local s = _toHex(t[start])
-		if (length > 1) then
+		length = length or ( #t - start + 1 )
+		local s = _toHex( t[start] )
+		if ( length > 1 ) then
 			for i = start + 1, start + length - 1 do
-				s = s .. sep .. _toHex(t[i])
+				s = s .. sep .. _toHex( t[i] )
 			end
 		end
 		return s
@@ -272,53 +267,53 @@ end
 -- String functions
 -- **************************************************
 
-local string = table_extend({}, string) -- do not pollute original "string"
+local string = table_extend( {}, string ) -- do not pollute original "string"
 do -- Extend string
 	-- Pads string to given length with given char from left.
-	function string.lpad (s, length, c)
-		s = tostring(s)
+	function string.lpad( s, length, c )
+		s = tostring( s )
 		length = length or 2
 		c = c or " "
-		return c:rep(length - #s) .. s
+		return c:rep( length - #s ) .. s
 	end
 
 	-- Pads string to given length with given char from right.
-	function string.rpad (s, length, c)
-		s = tostring(s)
+	function string.rpad( s, length, c )
+		s = tostring( s )
 		length = length or 2
 		c = char or " "
-		return s .. c:rep(length - #s)
+		return s .. c:rep( length - #s )
 	end
 
 	-- Splits a string based on the given separator. Returns a table.
-	function string.split (s, sep, convert, convertParam)
-		if (type(convert) ~= "function") then
+	function string.split( s, sep, convert, convertParam )
+		if ( type( convert ) ~= "function" ) then
 			convert = nil
 		end
-		if (type(s) ~= "string") then
+		if ( type( s ) ~= "string" ) then
 			return {}
 		end
 		sep = sep or " "
 		local t = {}
-		for token in s:gmatch("[^" .. sep .. "]+") do
-			if (convert ~= nil) then
-				token = convert(token, convertParam)
+		for token in s:gmatch( "[^" .. sep .. "]+" ) do
+			if ( convert ~= nil ) then
+				token = convert( token, convertParam )
 			end
-			table.insert(t, token)
+			table.insert( t, token )
 		end
 		return t
 	end
 
 	-- Formats a string into hex.
-	function string.formatToHex (s, sep)
+	function string.formatToHex( s, sep )
 		sep = sep or "-"
 		local result = ""
-		if (s ~= nil) then
-			for i = 1, string.len(s) do
-				if (i > 1) then
+		if ( s ~= nil ) then
+			for i = 1, string.len( s ) do
+				if ( i > 1 ) then
 					result = result .. sep
 				end
-				result = result .. string.format("%02X", string.byte(s, i))
+				result = result .. string.format( "%02X", string.byte( s, i ) )
 			end
 		end
 		return result
@@ -330,29 +325,29 @@ end
 -- Generic utilities
 -- **************************************************
 
-function log (msg, methodName, lvl)
+function log( msg, methodName, lvl )
 	local lvl = lvl or 50
-	if (methodName == nil) then
+	if ( methodName == nil ) then
 		methodName = "UNKNOWN"
 	else
-		methodName = "(" .. _NAME .. "::" .. tostring(methodName) .. ")"
+		methodName = "(" .. _NAME .. "::" .. tostring( methodName ) .. ")"
 	end
-	luup.log(string.rpad(methodName, 45) .. " " .. tostring(msg), lvl)
+	luup.log( string.rpad( methodName, 45 ) .. " " .. tostring( msg ), lvl )
 end
 
-local function debug () end
+local function debug() end
 
-local function warning (msg, methodName)
-	log(msg, methodName, 2)
+local function warning( msg, methodName )
+	log( msg, methodName, 2 )
 end
 
 local g_errors = {}
-local function error (msg, methodName)
-	table.insert( g_errors, { os.time(), tostring(msg) } )
+local function error( msg, methodName )
+	table.insert( g_errors, { os.time(), tostring( msg ) } )
 	if ( #g_errors > 100 ) then
 		table.remove( g_errors, 1 )
 	end
-	log(msg, methodName, 1)
+	log( msg, methodName, 1 )
 end
 
 
@@ -403,11 +398,11 @@ Variable = {
 	end,
 
 	getUnknownVariable = function( deviceId, serviceId, variableName )
-		local variable = indexVariable[tostring(serviceId) .. ";" .. tostring(variableName)]
-		if (variable ~= nil) then
-			return Variable.get(deviceId, variable)
+		local variable = indexVariable[ tostring( serviceId ) .. ";" .. tostring( variableName ) ]
+		if ( variable ~= nil ) then
+			return Variable.get( deviceId, variable )
 		else
-			return luup.variable_get(serviceId, variableName, deviceId)
+			return luup.variable_get( serviceId, variableName, deviceId )
 		end
 	end,
 
@@ -417,10 +412,10 @@ Variable = {
 		if ( deviceId == nil ) then
 			error( "deviceId is nil", "Variable.set" )
 			return
-		elseif (variable == nil) then
+		elseif ( variable == nil ) then
 			error( "variable is nil", "Variable.set" )
 			return
-		elseif (value == nil) then
+		elseif ( value == nil ) then
 			error( "value is nil", "Variable.set" )
 			return
 		end
@@ -466,46 +461,21 @@ Variable = {
 -- UI messages
 -- **************************************************
 
-local g_taskHandle = -1     -- Handle for the system messages
-local g_lastSysMessage = 0  -- Timestamp of the last status message
-
 UI = {
 	show = function( message )
-		log( "Display message: " .. tostring( message ), "UI.show" )
+		debug( "Display message: " .. tostring( message ), "UI.show" )
 		Variable.set( g_parentDeviceId, VARIABLE.LAST_MESSAGE, message )
 	end,
 
 	showError = function( message )
-		message = '<div style="color:red">' .. tostring( message ) .. '</div>'
+		debug( "Display message: " .. tostring( message ), "UI.showError" )
+		--message = '<div style="color:red">' .. tostring( message ) .. '</div>'
+		message = '<font color="red">' .. tostring( message ) .. '</font>'
 		Variable.set( g_parentDeviceId, VARIABLE.LAST_ERROR, message )
 	end,
+
 	clearError = function()
 		Variable.set( g_parentDeviceId, VARIABLE.LAST_ERROR, "" )
-	end,
-
-	showSysMessage = function( message, mode, permanent )
-		mode = mode or SYS_MESSAGE_TYPES.BUSY
-		permanent = permanent or false
-		log("mode: " .. mode .. ", permanent: " .. tostring( permanent ) .. ", message: " .. message, "UI.showSysMessage")
-
-		luup.task( message, mode, "Xee", g_taskHandle )
-		g_lastSysMessage = tostring( os.time() )
-
-		if not permanent then
-			-- Clear the previous system message, since it's transient.
-			luup.call_delay( "UI.clearSysMessage", 30, g_lastSysMessage )
-		elseif ( mode == SYS_MESSAGE_TYPES.ERROR ) then
-			-- Critical error.
-			--luup.set_failure( true, g_parentDeviceId )
-			luup.set_failure( 1, g_parentDeviceId )
-		end
-	end,
-
-	clearSysMessage = function( messageTime )
-		-- 'messageTime' is nil if the function is called by the user.
-		if ( ( messageTime == g_lastSysMessage ) or ( messageTime == nil ) ) then
-			luup.task( "Clearing...", SYS_MESSAGE_TYPES.SUCCESS, "Xee", g_taskHandle )
-		end
 	end
 }
 
@@ -566,7 +536,7 @@ API = {
 		-- "2016-03-01T02:24:20.000000+00:00"
 		local pattern = "(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+).%d+([%+%-])(%d+)%:(%d+)"
 		local Y, m, d, H, M, S, off, offH, offM = string.match( dateString, pattern )
-		local timestamp = os.time({
+		local timestamp = os.time( {
 			year = Y, month = m, day = d,
 			hour = H, min = M, sec = S
 		})
@@ -626,10 +596,10 @@ API = {
 		-- Get the token in Xee authentification form
 		local src = XEE_AUTH_URL ..
 				"?client_id=" .. XEE_CLIENT_ID ..
-				"&state=" .. url.escape( tostring( luup.pk_accesspoint ) .. ":" .. tostring( luup.model ) .. ":" .. tostring( luup.version ) )
+				"&state=" .. Url.escape( tostring( luup.pk_accesspoint ) .. ":" .. tostring( luup.model ) .. ":" .. tostring( luup.version ) )
 		debug( "Call Xee authentification form: " .. src, "API.getAccessToken" )
 		responseBody = {}
-		b, code, headers = https.request({
+		b, code, headers = https.request( {
 			url = src,
 			method = "GET",
 			sink = ltn12.sink.table( responseBody ),
@@ -637,11 +607,11 @@ API = {
 		})
 		response = table.concat( responseBody or {} )
 		debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken" )
-		--debug( "Response b:" .. tostring(b) .. " - code:" .. tostring(code) .. " - response:" .. tostring(response), "API.getAccessToken" )
+		--debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.getAccessToken" )
 		if ( ( b == 1 ) and ( code == 200 ) ) then
 			sessionId = headers[ "set-cookie" ]:match( "XEESessionId=([^;]-);" )
 			token = response:match( 'name="login%[_token%]" value="([^"]-)"' )
-			debug( "Response sessionId:\"" .. tostring(sessionId) .. "\", token:\"" .. tostring( token ) .. "\"", "API.getAccessToken")
+			debug( "Response sessionId:\"" .. tostring( sessionId ) .. "\", token:\"" .. tostring( token ) .. "\"", "API.getAccessToken")
 			if ( ( sessionId == nil ) or ( token == nil ) ) then
 				error( "(AUTHENTIFICATION_ERROR) Can not find sessionId or token in Xee authentification form", "API.getAccessToken" )
 				return false
@@ -652,11 +622,11 @@ API = {
 		end
 
 		-- Submit Xee authentification form
-		requestBody = "login%5Bidentifier%5D=" .. url.escape( tostring( g_params.identifier ) ) ..
-						"&login%5Bpassword%5D=" .. url.escape( tostring( g_params.password ) ) ..
+		requestBody = "login%5Bidentifier%5D=" .. Url.escape( tostring( g_params.identifier ) ) ..
+						"&login%5Bpassword%5D=" .. Url.escape( tostring( g_params.password ) ) ..
 						"&login%5B_token%5D=" .. tostring( token )
 		responseBody = {}
-		b, code, headers = https.request({
+		b, code, headers = https.request( {
 			url = XEE_AUTH_URL,
 			method = "POST",
 			headers = {
@@ -667,10 +637,10 @@ API = {
 			source = ltn12.source.string( requestBody ),
 			sink = ltn12.sink.table( responseBody ),
 			redirect = false
-		})
+		} )
 		response = table.concat( responseBody or {} )
 		debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken")
-		debug( "Response b:" .. tostring(b) .. " - code:" .. tostring(code) .. " - response:" .. tostring(response), "API.getAccessToken" )
+		debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.getAccessToken" )
 		if ( ( b == 1 ) and ( code == 302 ) ) then
 			-- Get the REDIRECT_URI (OAuth2)
 			redirectUri = headers[ "location" ]
@@ -686,12 +656,12 @@ API = {
 		-- Call REDIRECT_URI
 		debug( "Call REDIRECT_URI: " .. redirectUri, "API.getAccessToken" )
 		responseBody = {}
-		b, code, headers = https.request({
+		b, code, headers = https.request( {
 			url = redirectUri,
 			method = "GET",
 			sink = ltn12.sink.table( responseBody ),
 			redirect = false
-		})
+		} )
 		debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken" )
 
 		-- Google redirection (have to be done manually because it breaks SSL)
@@ -699,17 +669,17 @@ API = {
 			redirectUri = headers[ "location" ]
 			debug( "Call REDIRECT_URI after Google redirection: " .. redirectUri, "API.getAccessToken" )
 			responseBody = {}
-			b, code, headers = https.request({
+			b, code, headers = https.request( {
 				url = redirectUri,
 				method = "GET",
 				sink = ltn12.sink.table( responseBody ),
 				redirect = false
-			})
+			} )
 			debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken" )
 		end
 
 		response = table.concat( responseBody or {} )
-		debug( "Response b:" .. tostring(b) .. " - code:" .. tostring(code) .. " - response:" .. tostring(response), "API.getAccessToken" )
+		debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.getAccessToken" )
 		if ( ( b == 1 ) and ( code == 200 ) ) then
 			-- TODO : a bug in Xee ?
 			if ( response == '{"error":"invalid_request"}' ) then
@@ -731,33 +701,33 @@ API = {
 		end
 		local src = XEE_REDIRECT_URI ..
 				"?refreshToken=" .. g_params.refreshToken ..
-				"&state=" .. url.escape( tostring( luup.pk_accesspoint ) .. ":" .. tostring( luup.model ) .. ":" .. tostring( luup.version ) )
+				"&state=" .. Url.escape( tostring( luup.pk_accesspoint ) .. ":" .. tostring( luup.model ) .. ":" .. tostring( luup.version ) )
 		debug( "Call : " .. src, "API.refreshToken" )
 		local responseBody = {}
-		local b, code, headers = https.request({
+		local b, code, headers = https.request( {
 			url = src,
 			method = "GET",
 			sink = ltn12.sink.table( responseBody ),
 			redirect = false
-		})
-		debug("Response headers:" .. json.encode( headers ), "API.refreshToken")
+		} )
+		debug( "Response headers:" .. json.encode( headers ), "API.refreshToken" )
 
 		-- Google redirection (have to be done manually because it breaks SSL)
 		if ( ( b == 1 ) and ( code == 302 ) ) then
 			local newLocation = headers[ "location" ]
 			debug( "Call : " .. newLocation, "API.refreshToken" )
 			responseBody = {}
-			b, code, headers = https.request({
+			b, code, headers = https.request( {
 				url = newLocation,
 				method = "GET",
 				sink = ltn12.sink.table( responseBody ),
 				redirect = false
-			})
-			debug("Response headers:" .. json.encode( headers ), "API.refreshToken")
+			} )
+			debug( "Response headers:" .. json.encode( headers ), "API.refreshToken" )
 		end
 
 		local response = table.concat( responseBody or {} )
-		debug( "Response b:" .. tostring(b) .. " - code:" .. tostring(code) .. " - response:" .. tostring(response), "API.refreshToken" )
+		debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.refreshToken" )
 		if ( ( b == 1 ) and ( code == 200 ) ) then
 			-- TODO : a bug in Xee ?
 			if ( response == '{"error":"invalid_request"}' ) then
@@ -796,22 +766,22 @@ API = {
 			-- Call Xee API (via https)
 			debug( "Use access token:" .. g_params.accessToken, "API.request" )
 			local responseBody = {}
-			local b, code, headers = https.request({
+			local b, code, headers = https.request( {
 				url = url,
 				method = "GET",
 				headers = {
 					["Authorization"] = "Bearer " .. tostring( g_params.accessToken )
 				},
-				sink = ltn12.sink.table(responseBody)
-			})
-			debug("Response headers:" .. json.encode( headers ), "API.request")
+				sink = ltn12.sink.table( responseBody )
+			} )
+			debug( "Response headers:" .. json.encode( headers ), "API.request" )
 
 			response = table.concat( responseBody or {} )
-			debug("Response b:" .. tostring(b) .. " - code:" .. tostring(code) .. " - response:" .. tostring(response), "API.request")
+			debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.request" )
 			if ( b == 1 ) then
 				local decodeSuccess, jsonResponse = pcall( json.decode, response )
 				if not decodeSuccess then
-					error( "(DECODE_ERROR) " .. tostring(jsonResponse), "API.request" )
+					error( "(DECODE_ERROR) " .. tostring( jsonResponse ), "API.request" )
 				else
 					if ( code == 200 ) then
 						data = jsonResponse
@@ -881,8 +851,8 @@ API = {
 
 	-- Get the user ID
 	getUserId = function()
-		local data = API.request("/users/me")
-		if (data ~= nil) then
+		local data = API.request( "/users/me" )
+		if ( data ~= nil ) then
 			return data.id
 		else
 			return nil
@@ -911,21 +881,21 @@ local pi_360              = math.pi/360
 local pi_180_earth_radius = math.pi/180 * 6.371e6
 
 Geoloc = {
-	tostring = function (point)
+	tostring = function( point )
 		return string.format( "%g;%g", point.latitude, point.longitude )
 	end,
 
-	getDistance = function (p1, p2)
-		local x1, x2 = tonumber(p1.longitude), tonumber(p2.longitude)
-		local y1, y2 = tonumber(p1.latitude),  tonumber(p2.latitude)
-		local z1, z2 = tonumber(p1.altitude),  tonumber(p2.altitude)
-		local dx  = (x2 - x1) * pi_180_earth_radius * math.cos( (y2 + y1) * pi_360 )
-		local dy  = (y2 - y1) * pi_180_earth_radius
-		local dz = z1 and z2 and (z2 - z1) or 0
-		local distance = math.ceil( (dx*dx + dy*dy + dz*dz) ^ 0.5 )
+	getDistance = function( p1, p2 )
+		local x1, x2 = tonumber( p1.longitude ), tonumber( p2.longitude )
+		local y1, y2 = tonumber( p1.latitude ),  tonumber( p2.latitude )
+		local z1, z2 = tonumber( p1.altitude ),  tonumber( p2.altitude )
+		local dx = ( x2 - x1 ) * pi_180_earth_radius * math.cos( ( y2 + y1 ) * pi_360 )
+		local dy = ( y2 - y1 ) * pi_180_earth_radius
+		local dz = z1 and z2 and ( z2 - z1 ) or 0
+		local distance = math.ceil( ( dx*dx + dy*dy + dz*dz ) ^ 0.5 )
 		--assert (dx*dx+dy*dy+dz*dz >= 0)
 		--assert ((dx*dx+dy*dy+dz*dz)^0.5 >= 0)
-		debug( string.format("Found a distance of %dm between %s and %s", distance, Geoloc.tostring(p1), Geoloc.tostring(p2)), "Geoloc.getDistance" )
+		debug( string.format( "Found a distance of %dm between %s and %s", distance, Geoloc.tostring( p1 ), Geoloc.tostring( p2 ) ), "Geoloc.getDistance" )
 		return distance
 	end
 }
@@ -1096,7 +1066,7 @@ Cars = {
 			else
 				debug( "Add car #" .. carId .. " - " .. json.encode( car ), "Cars.sync" )
 				local parameters = ""
-				for _, param in ipairs({
+				for _, param in ipairs( {
 					{ "COMM_FAILURE", "0" },
 					{ "COMM_FAILURE_TIME", "0" },
 					{ "CAR_STATUS", "1" },
@@ -1109,8 +1079,8 @@ Cars = {
 					{ "CAR_DBID", car.cardbId },
 					{ "CAR_CREATION_DATE", car.creationDate },
 					{ "CAR_LAST_UPDATE_DATE", car.lastUpdateDate }
-				}) do
-					parameters = parameters .. VARIABLE[param[1]][1] .. "," .. VARIABLE[param[1]][2] .. "=" .. tostring(param[2] or "") .. "\n"
+				} ) do
+					parameters = parameters .. VARIABLE[param[1]][1] .. "," .. VARIABLE[param[1]][2] .. "=" .. tostring( param[2] or "" ) .. "\n"
 				end
 				luup.chdev.append(
 					g_parentDeviceId, ptr, carId,
@@ -1266,9 +1236,9 @@ PollEngine = {
 
 }
 
-------------------------------------------------------------------------------------------------------------------------
--- Request handler
-------------------------------------------------------------------------------------------------------------------------
+-- **************************************************
+-- HTTP request handler
+-- **************************************************
 
 local _handlerCommands = {
 	["default"] = function( params, outputFormat )
@@ -1297,7 +1267,7 @@ local _handlerCommands = {
 	["setGeofences"] = function( params, outputFormat )
 		local geofences
 		local isOk, strError = true, nil
-		local decodeSuccess, jsonGeofences = pcall( json.decode, url.unescape( params["newGeofences"] or "" ) )
+		local decodeSuccess, jsonGeofences = pcall( json.decode, Url.unescape( params["newGeofences"] or "" ) )
 		if ( decodeSuccess and jsonGeofences ) then
 			isOk, strError = Geofences.set( g_parentDeviceId, jsonGeofences )
 		else
@@ -1314,12 +1284,12 @@ local _handlerCommands = {
 		return tostring( json.encode( g_errors ) ), "application/json"
 	end
 }
-setmetatable(_handlerCommands,{
+setmetatable( _handlerCommands,{
 	__index = function( t, command, outputFormat )
 		log( "No handler for command '" ..  tostring( command ) .. "'", "handlerXee")
 		return _handlerCommands["default"]
 	end
-})
+} )
 
 local function _handleCommand( lul_request, lul_parameters, lul_outputformat )
 	local command = lul_parameters[ "command" ] or "default"
@@ -1359,12 +1329,13 @@ local function _initPluginInstance()
 		debug = log
 	else
 		log( "DebugMode is disabled", "init" )
-		debug = function () end
+		debug = function() end
 	end
 
 	Variable.set( g_parentDeviceId, VARIABLE.PLUGIN_VERSION, _VERSION )
 	Variable.set( g_parentDeviceId, VARIABLE.LAST_MESSAGE, "" )
 	Variable.set( g_parentDeviceId, VARIABLE.LAST_ERROR, "" )
+	-- Get plugin params
 	--g_params.identifier = Variable.getOrInit( g_parentDeviceId, VARIABLE.IDENTIFIER, "" )
 	--g_params.password = Variable.getOrInit( g_parentDeviceId, VARIABLE.PASSWORD, "" )
 	g_params.accessToken = Variable.getOrInit( g_parentDeviceId, VARIABLE.ACCESS_TOKEN, "" )
@@ -1386,6 +1357,7 @@ local function _initPluginInstance()
 	Variable.getOrInit( g_parentDeviceId, VARIABLE.GEOFENCES, defaultGeoFence )
 	Geofences.get( g_parentDeviceId )
 
+	-- Vera location
 	g_params.location = {
 		latitude = luup.latitude,
 		longitude = luup.longitude
@@ -1396,7 +1368,7 @@ end
 local function _registerWithALTUI()
 	for deviceId, device in pairs( luup.devices ) do
 		if ( device.device_type == "urn:schemas-upnp-org:device:altui:1" ) then
-			if luup.is_ready(deviceId) then
+			if luup.is_ready( deviceId ) then
 				log( "Register with ALTUI main device #" .. tostring( deviceId ), "registerWithALTUI" )
 				luup.call_action(
 					"urn:upnp-org:serviceId:altui1",
@@ -1453,9 +1425,6 @@ function startup( lul_device )
 		return false, "Device #" .. tostring( g_parentDeviceId ) .. " is disabled"
 	end
 
-	-- Get a handle for system messages
-	g_taskHandle = luup.task( "Starting up...", 1, "Xee", -1 )
-
 	-- Init
 	_initPluginInstance()
 	-- Watch setting changes
@@ -1478,7 +1447,6 @@ end
 
 -- Promote the functions used by Vera's luup.xxx functions to the global name space
 _G["Xee.handleCommand"] = _handleCommand
-_G["UI.clearSysMessage"] = UI.clearSysMessage
 _G["Xee.PollEngine.start"] = PollEngine.start
 
 _G["Xee.deferredStartup"] = _deferredStartup

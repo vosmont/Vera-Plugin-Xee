@@ -79,7 +79,10 @@ Signals and position of each vehicule are periodically updated. This refresh int
 Cars have been synchronized with your Xee account...<br/>\
 ... wait until the reload of Luup engine",
 		"Explanation for map": "\
-TODO"
+This map shows your cars and the geofences.<br/>\
+You can add/delete/move the geofences.",
+		"There's no car": "\
+There's no car bound to your Xee account."
 	};
 
 	function _T( t ) {
@@ -102,6 +105,7 @@ TODO"
 .xee-panel .icon.big:before { font-size: 30px; }\
 .xee-panel .icon-help:before { content: "\\2753"; }\
 .xee-panel .icon-refresh:before { content: "\\267B"; }\
+.xee-panel .icon-map:before { content: "\\25F1"; }\
 .xee-hidden { display: none; }\
 .xee-error { color:red; }\
 .xee-header { margin-bottom: 15px; font-size: 1.1em; font-weight: bold; }\
@@ -115,6 +119,9 @@ TODO"
 #xee-donate form { height: 50px; }\
 	');
 
+	// *************************************************************************************************
+	// Tools
+	// *************************************************************************************************
 
 	/**
 	 * Convert a unix timestamp into date
@@ -134,28 +141,6 @@ TODO"
 		var t = new Date( parseInt( timestamp, 10 ) * 1000 );
 		var isoString = t.toISOString();
 		return isoString;
-	}
-
-	/**
-	 * 
-	 */
-	function _onDeviceStatusChanged( deviceObjectFromLuStatus ) {
-		if ( deviceObjectFromLuStatus.device_type === XEE_DID ) {
-			// Update xee panel (ALTUI)
-			if ( window.MultiBox ) {
-				var device = MultiBox.getDeviceByAltuiID( deviceObjectFromLuStatus.altuiid );
-				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( myModule.ALTUI_drawXeeDevice( device ) );
-			}
-			// Update cars panel
-			_drawCarsList();
-		}
-		if ( deviceObjectFromLuStatus.device_type === XEE_CAR_DID ) {
-			// Update xee car panel (ALTUI)
-			if ( window.MultiBox ) {
-				var device = MultiBox.getDeviceByAltuiID( deviceObjectFromLuStatus.altuiid );
-				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( myModule.ALTUI_drawXeeCarDevice( device ) );
-			}
-		}
 	}
 
 	// *************************************************************************************************
@@ -302,7 +287,7 @@ TODO"
 					html += '</table>';
 					$("#xee-cars").html( html );
 				} else {
-					$("#xee-cars").html("There's no car bound to your Xee account.");
+					$("#xee-cars").html( _T( "There's no car" ) );
 				}
 			} );
 	}
@@ -353,6 +338,7 @@ TODO"
 					'<div id="xee-map-panel" class="xee-panel">'
 				+		'<div class="xee-toolbar">'
 				+			'<button type="button" class="xee-help"><span class="icon icon-help"></span>Help</button>'
+				+			'<button type="button" class="xee-big-map"><span class="icon icon-map"></span>Big map</button>'
 				+		'</div>'
 				+		'<div class="xee-explanation xee-hidden">'
 				+			_T( "Explanation for map" )
@@ -364,6 +350,12 @@ TODO"
 			$( "#xee-map-panel" )
 				.on( "click", ".xee-help" , function() {
 					$( ".xee-explanation" ).toggleClass( "xee-hidden" );
+				} )
+				.on( "click", ".xee-big-map" , function() {
+					var win = window.open( api.getDataRequestURL() + "?id=lr_Xee&command=getMap", "_blank" );
+					if ( win ) {
+						win.focus();
+					}
 				} );
 		} catch (err) {
 			Utils.logError('Error in Xee.showMap(): ' + err);
@@ -452,7 +444,7 @@ TODO"
 			// Display the errors
 			_drawErrorsList();
 		} catch (err) {
-			Utils.logError('Error in Xee._showErrors(): ' + err);
+			Utils.logError('Error in Xee.showErrors(): ' + err);
 		}
 	}
 
@@ -498,7 +490,7 @@ TODO"
 		});
 	}
 
-		/**
+	/**
 	 * 
 	 */
 	function _performActionSync() {
@@ -565,6 +557,28 @@ TODO"
 	// *************************************************************************************************
 	// Main
 	// *************************************************************************************************
+
+	/**
+	 * Callback on device events
+	 */
+	function _onDeviceStatusChanged( deviceObjectFromLuStatus ) {
+		if ( deviceObjectFromLuStatus.device_type === XEE_DID ) {
+			// Update xee panel (ALTUI)
+			if ( window.MultiBox ) {
+				var device = MultiBox.getDeviceByAltuiID( deviceObjectFromLuStatus.altuiid );
+				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( myModule.ALTUI_drawXeeDevice( device ) );
+			}
+			// Update cars panel
+			_drawCarsList();
+		}
+		if ( deviceObjectFromLuStatus.device_type === XEE_CAR_DID ) {
+			// Update xee car panel (ALTUI)
+			if ( window.MultiBox ) {
+				var device = MultiBox.getDeviceByAltuiID( deviceObjectFromLuStatus.altuiid );
+				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( myModule.ALTUI_drawXeeCarDevice( device ) );
+			}
+		}
+	}
 
 	myModule = {
 		uuid: _uuid,

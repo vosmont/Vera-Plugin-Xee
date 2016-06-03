@@ -185,7 +185,7 @@
 		},
 		{
 			"Label": {
-				"lang_tag": "ui7_xee_errors",
+				"lang_tag": "xee_errors",
 				"text": "Errors"
 			},
 			"Position": 4,
@@ -195,7 +195,7 @@
 		},
 		{
 			"Label": {
-				"lang_tag": "ui7_donate",
+				"lang_tag": "donate",
 				"text": "Donate"
 			},
 			"Position": 5,
