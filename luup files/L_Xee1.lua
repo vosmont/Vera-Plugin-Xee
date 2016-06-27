@@ -18,16 +18,19 @@ local Url = require( "socket.url" )
 
 _NAME = "Xee"
 _DESCRIPTION = "Add your cars in your scenes"
-_VERSION = "0.3"
+_VERSION = "0.4"
+_AUTHOR = "vosmont"
 
 local XEE_CLIENT_ID = "A7V3mOLy8Qm36nncz6Hy"
 local XEE_AUTH_URL = "https://cloud.xee.com/v3/auth/auth"
+--local XEE_AUTH_URL = "https://sandbox.xee.com/v3/auth/auth"
 local XEE_API_URL  = "https://cloud.xee.com/v3"
+--local XEE_API_URL  = "https://sandbox.xee.com/v3"
 local XEE_REDIRECT_URI = "https://script.google.com/macros/s/AKfycbwMXbU9MFju3-yq8iCNTLds5UqjejeYj4qyyQfyJb4qh5E19KIP/exec"
-local XEE_MIN_POLL_INTERVAL = 30
-local XEE_MIN_POLL_INTERVAL_AFTER_ERROR = 60
-local XEE_MIN_POLL_INTERVAL_FAR_AWAY = 700
-local XEE_MIN_INTERVAL_BETWEEN_REQUESTS = 1
+local MIN_POLL_INTERVAL = 5
+local MIN_POLL_INTERVAL_AFTER_ERROR = 60
+local MIN_POLL_INTERVAL_FAR_AWAY = 700
+local MIN_INTERVAL_BETWEEN_REQUESTS = 1
 
 -- **************************************************
 -- Constants
@@ -102,16 +105,10 @@ local function _getDeviceTypeInfos( deviceType )
 	end
 end
 
--- Message types
-local SYS_MESSAGE_TYPES = {
-	BUSY    = 1,
-	ERROR   = 2,
-	SUCCESS = 4
-}
 
-------------------------------------------------------------------------------------------------------------------------
+-- **************************************************
 -- Globals
-------------------------------------------------------------------------------------------------------------------------
+-- **************************************************
 
 local g_parentDeviceId      -- The device # of the parent device
 local g_params = {
@@ -263,6 +260,7 @@ do -- Extend table
 
 end
 
+
 -- **************************************************
 -- String functions
 -- **************************************************
@@ -397,7 +395,7 @@ Variable = {
 		return value, timestamp
 	end,
 
-	getUnknownVariable = function( deviceId, serviceId, variableName )
+	getUnknown = function( deviceId, serviceId, variableName )
 		local variable = indexVariable[ tostring( serviceId ) .. ";" .. tostring( variableName ) ]
 		if ( variable ~= nil ) then
 			return Variable.get( deviceId, variable )
@@ -484,6 +482,24 @@ UI = {
 -- Xee API
 -- **************************************************
 
+-- Compute the difference in seconds between local time and UTC.
+local function get_timezone()
+	local now = os.time()
+	local lmt = os.date( "*t", now )
+	local gmt = os.date( "!*t", now )
+	local zone = os.difftime( os.time( lmt ), os.time( gmt ) )
+	if lmt.isdst then
+		if zone > 0 then
+			zone = zone + 3600
+		else
+			zone = zone - 3600
+		end
+	end
+	return zone
+end
+
+local _timezone = get_timezone()
+
 API = {
 	-- Get the errors in the response
 	-- [ { "type": "ERROR_TYPE", "message": "Message on the error", "tip": "How to fix the error" } ]
@@ -492,11 +508,13 @@ API = {
 			local decodeSuccess, jsonErrors = pcall( json.decode, errors )
 			if ( decodeSuccess and jsonErrors ) then
 				errors = jsonErrors
+			else
+				return { { ["type"] = "UNKNOWN_ERROR", message = errors } }
 			end
 		end
 		if ( type( errors ) == "table" ) then
 			if ( errors.error ) then
-				return { ["type"] = "UNKNOWN_ERROR", message = errors.error }
+				return { { ["type"] = "UNKNOWN_ERROR", message = errors.error } }
 			else
 				return errors
 			end
@@ -533,19 +551,46 @@ API = {
 
 	-- Convert Xee time field into a timestamp
 	convertToTimestamp = function( dateString )
-		-- "2016-03-01T02:24:20.000000+00:00"
-		local pattern = "(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+).%d+([%+%-])(%d+)%:(%d+)"
-		local Y, m, d, H, M, S, off, offH, offM = string.match( dateString, pattern )
+		if ( ( dateString == nil ) or ( dateString == "" ) ) then
+			return
+		end
+		local Y, m, d, H, M, S, off, offH, offM
+		
+		local patterns = {
+			-- "2016-06-25T10:44:00Z"
+			"(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+)(Z)",
+			-- "2016-06-25T10:44:00.788Z"
+			"(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+).%d+(Z)",
+			-- "2016-03-01T02:24:20.000000+02:00"
+			"(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+).%d+([%+%-])(%d+)%:(%d+)"
+		}
+		for _, pattern in ipairs( patterns ) do
+			Y, m, d, H, M, S, off, offH, offM = string.match( dateString, pattern )
+			if ( Y and m and d ) then
+				break
+			end
+		end
+		if ( Y == nil ) then
+			error( "Date '" .. dateString .. "' is not valid", "convertToTimestamp" )
+			return
+		end
 		local timestamp = os.time( {
 			year = Y, month = m, day = d,
 			hour = H, min = M, sec = S
 		})
-		if offsetH then
-			offset = offH * 60 + offM
-			if ( off == "-" ) then
-				offset = offset * -1
+		if off then
+			local offset
+			if ( off == "Z" ) then
+				offset = _timezone
+			else
+				offset = offH * 60 + offM
+				if ( off == "-" ) then
+					offset = offset * -1
+				end
 			end
+			timestamp = timestamp + offset
 		end
+		
 		return timestamp
 	end,
 
@@ -777,15 +822,20 @@ API = {
 			debug( "Response headers:" .. json.encode( headers ), "API.request" )
 
 			response = table.concat( responseBody or {} )
-			debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.request" )
+			--debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.request" )
+			debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ), "API.request" )
 			if ( b == 1 ) then
 				local decodeSuccess, jsonResponse = pcall( json.decode, response )
 				if not decodeSuccess then
 					error( "(DECODE_ERROR) " .. tostring( jsonResponse ), "API.request" )
 				else
 					if ( code == 200 ) then
-						data = jsonResponse
-						debug( "Data: " .. json.encode( data ), "API.request" )
+						if ( type( jsonResponse ) == "table" ) then
+							data = jsonResponse
+							debug( "Data: " .. json.encode( data ), "API.request" )
+						else
+							error( API.errorsToString( jsonResponse ), "API.request" )
+						end
 						break
 					elseif ( code == 401 ) then
 						error( API.errorsToString( jsonResponse ), "API.request" )
@@ -816,10 +866,10 @@ API = {
 			else
 				error( "(HTTP_ERROR) code:" .. tostring( code ) .. ", response:\"" .. tostring( response ) .. "\"", "API.request" )
 			end
-			if ( not isAuthentificationError and not isAuthorizationError ) then
+			if ( ( data == nil ) and not isAuthentificationError and not isAuthorizationError ) then
 				nbTry = nbTry + 1
-				if ( ( data == nil ) and ( nbTry <= g_params.nbMaxTry ) ) then
-					luup.sleep( XEE_MIN_INTERVAL_BETWEEN_REQUESTS * 1000 )
+				if ( nbTry <= g_params.nbMaxTry ) then
+					luup.sleep( MIN_INTERVAL_BETWEEN_REQUESTS * 1000 )
 					debug( "Try #" .. tostring( nbTry ) .. "/" .. tostring( g_params.nbMaxTry ), "API.request"  )
 				end
 			end
@@ -905,8 +955,8 @@ Geoloc = {
 g_geofences = {}
 
 Geofences = {
-	get = function( deviceId )
-		local strGeofences = Variable.get( deviceId, VARIABLE.GEOFENCES )
+	get = function( mainDeviceId )
+		local strGeofences = Variable.get( mainDeviceId, VARIABLE.GEOFENCES )
 		g_geofences = {}
 		for _, strGeofence in ipairs( string.split( strGeofences, "|" ) ) do
 			local geoParams = string.split( strGeofence, ";" )
@@ -920,7 +970,7 @@ Geofences = {
 		debug( "Geofences : " .. json.encode( g_geofences ), "Geofences.load")
 	end,
 
-	set = function( deviceId, geofences )
+	set = function( mainDeviceId, geofences )
 		if ( type( geofences ) ~= "table" ) then
 			return false, "geofences are empty"
 		end
@@ -943,8 +993,8 @@ Geofences = {
 			end
 		end
 		if isOk then
-			Variable.set( deviceId, VARIABLE.GEOFENCES, strGeofences )
-			Geofences.get( deviceId )
+			Variable.set( mainDeviceId, VARIABLE.GEOFENCES, strGeofences )
+			Geofences.get( mainDeviceId )
 		end
 		return isOk, strError
 	end,
@@ -1042,7 +1092,7 @@ Cars = {
 		debug( "Sync cars", "Cars.sync" )
 
 		local cars = API.getCars()
-		if ( cars == nil ) then
+		if ( type( cars ) ~= "table" ) then
 			return false
 		end
 
@@ -1077,8 +1127,8 @@ Cars = {
 					{ "CAR_NUMBER_PLATE", car.numberPlate },
 					{ "CAR_DEVICE_ID", car.deviceId },
 					{ "CAR_DBID", car.cardbId },
-					{ "CAR_CREATION_DATE", car.creationDate },
-					{ "CAR_LAST_UPDATE_DATE", car.lastUpdateDate }
+					{ "CAR_CREATION_DATE", API.convertToTimestamp( car.creationDate ) },
+					{ "CAR_LAST_UPDATE_DATE", API.convertToTimestamp( car.lastUpdateDate ) }
 				} ) do
 					parameters = parameters .. VARIABLE[param[1]][1] .. "," .. VARIABLE[param[1]][2] .. "=" .. tostring( param[2] or "" ) .. "\n"
 				end
@@ -1198,8 +1248,8 @@ Cars = {
 -- **************************************************
 
 PollEngine = {
-	start = function()
-		log( "Start poll", "PollEngine.start" )
+	poll = function()
+		log( "Start poll", "PollEngine.poll" )
 
 		local pollInterval = g_params.pollSettings[ 1 ]
 
@@ -1224,17 +1274,18 @@ PollEngine = {
 
 			if ( #g_cars > 1 ) then
 				pollInterval = os.difftime( math.min( g_cars[ 1 ].nextPollDate, g_cars[ 2 ].nextPollDate ), os.time() )
-				if ( pollInterval < XEE_MIN_INTERVAL_BETWEEN_REQUESTS ) then
-					pollInterval = XEE_MIN_INTERVAL_BETWEEN_REQUESTS
+				if ( pollInterval < MIN_INTERVAL_BETWEEN_REQUESTS ) then
+					pollInterval = MIN_INTERVAL_BETWEEN_REQUESTS
 				end
 			end
 		end
 
-		debug( "Next poll in " .. tostring( pollInterval ) .. " seconds", "PollEngine.start" )
-		luup.call_delay( "Xee.PollEngine.start", pollInterval )
+		debug( "Next poll in " .. tostring( pollInterval ) .. " seconds", "PollEngine.poll" )
+		luup.call_delay( "Xee.PollEngine.poll", pollInterval )
 	end
 
 }
+
 
 -- **************************************************
 -- HTTP request handler
@@ -1265,13 +1316,18 @@ local _handlerCommands = {
 	end,
 
 	["setGeofences"] = function( params, outputFormat )
-		local geofences
 		local isOk, strError = true, nil
-		local decodeSuccess, jsonGeofences = pcall( json.decode, Url.unescape( params["newGeofences"] or "" ) )
-		if ( decodeSuccess and jsonGeofences ) then
-			isOk, strError = Geofences.set( g_parentDeviceId, jsonGeofences )
+		local jsonGeofences = Url.unescape( params["newGeofences"] or "" )
+		local decodeSuccess, geofences, _, jsonError = pcall( json.decode, jsonGeofences )
+		if ( decodeSuccess and geofences ) then
+			isOk, strError = Geofences.set( g_parentDeviceId, geofences )
 		else
-			isOk, strError = false, jsonGeofences
+			isOk, strError = false, "JSON error: " .. tostring( jsonError )
+		end
+		if isOk then
+			for _, car in ipairs( g_cars ) do
+				car.status.zonesIn = ""
+			end
 		end
 		return tostring( json.encode( { result = isOk, ["error"] = strError } ) ), "application/json"
 	end,
@@ -1320,7 +1376,7 @@ end
 
 -- Init plugin instance
 local function _initPluginInstance()
-	log( "initPluginInstance", "init" )
+	log( "Init", "initPluginInstance" )
 
 	-- Update the Debug Mode
 	local debugMode = ( Variable.getOrInit( g_parentDeviceId, VARIABLE.DEBUG_MODE, "0" ) == "1" ) and true or false
@@ -1342,14 +1398,14 @@ local function _initPluginInstance()
 	g_params.refreshToken = Variable.getOrInit( g_parentDeviceId, VARIABLE.REFRESH_TOKEN, "" )
 	g_params.tokenExpirationDate = Variable.getOrInit( g_parentDeviceId, VARIABLE.TOKEN_EXPIRATION_DATE, "" )
 	g_params.pollSettings = string.split( Variable.getOrInit( g_parentDeviceId, VARIABLE.POLL_SETTINGS, "60,700,700" ), ",", tonumber )
-	if ( ( g_params.pollSettings[ 1 ] or 0 ) < XEE_MIN_POLL_INTERVAL ) then
-		g_params.pollSettings[ 1 ] = XEE_MIN_POLL_INTERVAL
+	if ( ( g_params.pollSettings[ 1 ] or 0 ) < MIN_POLL_INTERVAL ) then
+		g_params.pollSettings[ 1 ] = MIN_POLL_INTERVAL
 	end
-	if ( ( g_params.pollSettings[ 2 ] or 0 ) < XEE_MIN_POLL_INTERVAL_AFTER_ERROR ) then
-		g_params.pollSettings[ 2 ] = XEE_MIN_POLL_INTERVAL_AFTER_ERROR
+	if ( ( g_params.pollSettings[ 2 ] or 0 ) < MIN_POLL_INTERVAL_AFTER_ERROR ) then
+		g_params.pollSettings[ 2 ] = MIN_POLL_INTERVAL_AFTER_ERROR
 	end
-	if ( ( g_params.pollSettings[ 3 ] or 0 ) < XEE_MIN_POLL_INTERVAL_FAR_AWAY ) then
-		g_params.pollSettings[ 3 ] = XEE_MIN_POLL_INTERVAL_FAR_AWAY
+	if ( ( g_params.pollSettings[ 3 ] or 0 ) < MIN_POLL_INTERVAL_FAR_AWAY ) then
+		g_params.pollSettings[ 3 ] = MIN_POLL_INTERVAL_FAR_AWAY
 	end
 
 	-- Geofences
@@ -1405,9 +1461,9 @@ local function _deferredStartup()
 	Cars.retrieve()
 
 	if result then
-		PollEngine.start()
+		PollEngine.poll()
 	else
-		luup.call_delay( "Xee.PollEngine.start", XEE_MIN_POLL_INTERVAL_AFTER_ERROR )
+		luup.call_delay( "Xee.PollEngine.poll", MIN_POLL_INTERVAL_AFTER_ERROR )
 	end
 end
 
@@ -1447,7 +1503,7 @@ end
 
 -- Promote the functions used by Vera's luup.xxx functions to the global name space
 _G["Xee.handleCommand"] = _handleCommand
-_G["Xee.PollEngine.start"] = PollEngine.start
+_G["Xee.PollEngine.poll"] = PollEngine.poll
 
 _G["Xee.deferredStartup"] = _deferredStartup
 _G["Xee.initPluginInstance"] = _initPluginInstance

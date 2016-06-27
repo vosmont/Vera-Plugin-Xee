@@ -19,18 +19,11 @@
 	};
 	// Custom CSS injection
 	Utils.injectCustomCSS = function( nameSpace, css ) {
-		if ( $( "style[title=\"" + nameSpace + " custom CSS\"]" ).size() === 0 ) {
+		if ( $( "#custom-css-" + nameSpace ).size() === 0 ) {
 			Utils.logDebug( "Injects custom CSS for " + nameSpace );
-			var pluginStyle = $( "<style>" );
-			if ($.fn.jquery === "1.5") {
-				pluginStyle.attr( "type", "text/css" )
-					.attr( "title", nameSpace + " custom CSS" );
-			} else {
-				pluginStyle.prop( "type", "text/css" )
-					.prop( "title", nameSpace + " custom CSS" );
-			}
+			var pluginStyle = $( '<style id="custom-css-' + nameSpace + '">' );
 			pluginStyle
-				.html( css )
+				.text( css )
 				.appendTo( "head" );
 		} else {
 			Utils.logDebug( "Injection of custom CSS has already been done for " + nameSpace );
@@ -54,7 +47,7 @@ var Xee = ( function( api, $ ) {
 	var _lastUpdate = 0;
 
 	var _terms = {
-		"Authentification explanation": "\
+		"ExplanationAuthentification": "\
 The connection to Xee Cloud is made by OAuth2 mechanism.<br/>\
 When you inform your identifier/passord in the form provided by Xee (the company), you delegate your authentification to the Xee plugin (in your Vera), which then has the authorization to acces to the informations of your Xee account.<br/>\
 <br/>\
@@ -62,10 +55,10 @@ As Oauth2 protocol is not implemented in the Vera, the plugin uses a third-part 
 - This server is a Google Apps Script (code available with the plugin sources).<br/>\
 - The access and refresh tokens are not stored somewhere else that in your Vera.<br/>\
 - Calls to that webservice are recorded, but your privacy is respected (see sources).",
-		"Authorization tokens saved": "\
+		"AuthorizationSaved": "\
 The authorization tokens have been saved.<br/>\
 They will be used at the next automatic refresh, or you can force the refresh by clicking on the button \"Sync\" in the \"Cars\" tab.",
-		"Explanation for syncing cars": "\
+		"ExplanationSyncingCars": "\
 The list of the vehicules bound to your Xee account is refreshed :<br/>\
 - At each restart of the luup engine.<br/>\
 - When you press the button \"Sync\".<br/>\
@@ -75,14 +68,16 @@ Signals and position of each vehicule are periodically updated. This refresh int
 - If an error has been raised during the last update.<br/>\
 - Distance from your home (TODO).<br/>\
 ",
-		"Syncing cars": "\
+		"SyncingCars": "\
 Cars have been synchronized with your Xee account...<br/>\
 ... wait until the reload of Luup engine",
-		"Explanation for map": "\
+		"ExplanationMap": "\
 This map shows your cars and the geofences.<br/>\
 You can add/delete/move the geofences.",
-		"There's no car": "\
-There's no car bound to your Xee account."
+		"NoCar": "\
+There's no car bound to your Xee account.",
+		"NoError": "\
+There's no error."
 	};
 
 	function _T( t ) {
@@ -95,7 +90,7 @@ There's no car bound to your Xee account."
 
 	// Inject plugin specific CSS rules
 	// http://www.utf8icons.com/
-	Utils.injectCustomCSS( "Xee", '\
+	Utils.injectCustomCSS( "xee", '\
 .xee-panel { padding: 5px; }\
 .xee-panel label { font-weight: normal }\
 .xee-panel td { padding: 5px; }\
@@ -201,7 +196,7 @@ There's no car bound to your Xee account."
 				+			'<button type="button" class="xee-help"><span class="icon icon-help"></span>Help</button>'
 				+		'</div>'
 				+		'<div class="xee-explanation xee-hidden">'
-				+			_T( "Authentification explanation" )
+				+			_T( "ExplanationAuthentification" )
 				+		'</div>'
 				+		'<div id="xee-authentification">'
 				+			'<div class="xee-step">'
@@ -225,7 +220,7 @@ There's no car bound to your Xee account."
 				} )
 				.on( "click", "#xee-authentification-set" , function() {
 					_performActionSetTokens( $( "#xee-authentification-params" ).val() );
-					$( "#xee-authentification" ).html( _T( "Authorization tokens saved" ) );
+					$( "#xee-authentification" ).html( _T( "AuthorizationSaved" ) );
 				} );
 		} catch (err) {
 			Utils.logError('Error in Xee.showAuthentification(): ' + err);
@@ -287,7 +282,7 @@ There's no car bound to your Xee account."
 					html += '</table>';
 					$("#xee-cars").html( html );
 				} else {
-					$("#xee-cars").html( _T( "There's no car" ) );
+					$("#xee-cars").html( _T( "NoCar" ) );
 				}
 			} );
 	}
@@ -305,7 +300,7 @@ There's no car bound to your Xee account."
 				+			'<button type="button" class="xee-sync"><span class="icon icon-refresh"></span>Sync</button>'
 				+		'</div>'
 				+		'<div class="xee-explanation xee-hidden">'
-				+			_T( "Explanation for syncing cars" )
+				+			_T( "ExplanationSyncingCars" )
 				+		'</div>'
 				+		'<div id="xee-cars">'
 				+		'</div>'
@@ -317,13 +312,13 @@ There's no car bound to your Xee account."
 					$( ".xee-explanation" ).toggleClass( "xee-hidden" );
 				} )
 				.on( "click", ".xee-sync", function() {
-					$( "#xee-cars" ).html( _T( "Syncing cars" ) );
+					$( "#xee-cars" ).html( _T( "SyncingCars" ) );
 					_performActionSync();
 				} );
 			// Display the cars
 			_drawCarsList();
-		} catch (err) {
-			Utils.logError('Error in Xee.showCars(): ' + err);
+		} catch ( err ) {
+			Utils.logError( "Error in Xee.showCars(): " + err );
 		}
 	}
 
@@ -334,6 +329,7 @@ There's no car bound to your Xee account."
 	function _showMap( deviceId ) {
 		_deviceId = deviceId;
 		try {
+			var isDebug = (api.getDeviceStateVariable(_deviceId, "urn:upnp-org:serviceId:Xee1", "DebugMode", {dynamic: false}) === "1");
 			api.setCpanelContent(
 					'<div id="xee-map-panel" class="xee-panel">'
 				+		'<div class="xee-toolbar">'
@@ -341,9 +337,9 @@ There's no car bound to your Xee account."
 				+			'<button type="button" class="xee-big-map"><span class="icon icon-map"></span>Big map</button>'
 				+		'</div>'
 				+		'<div class="xee-explanation xee-hidden">'
-				+			_T( "Explanation for map" )
+				+			_T( "ExplanationMap" )
 				+		'</div>'
-				+		'<iframe id="xee-map"src="' + api.getDataRequestURL() + '?id=lr_Xee&command=getMap"></iframe>'
+				+		'<iframe id="xee-map"src="' + api.getDataRequestURL() + '?id=lr_Xee&command=getMap' + ( isDebug ? "&debug=true": "") + '"></iframe>'
 				+	'</div>'
 			);
 			// Manage UI events
@@ -352,13 +348,14 @@ There's no car bound to your Xee account."
 					$( ".xee-explanation" ).toggleClass( "xee-hidden" );
 				} )
 				.on( "click", ".xee-big-map" , function() {
-					var win = window.open( api.getDataRequestURL() + "?id=lr_Xee&command=getMap", "_blank" );
+					var isDebug = (api.getDeviceStateVariable(_deviceId, "urn:upnp-org:serviceId:Xee1", "DebugMode", {dynamic: false}) === "1");
+					var win = window.open( api.getDataRequestURL() + "?id=lr_Xee&command=getMap" + ( isDebug ? "&debug=true": ""), "_blank" );
 					if ( win ) {
 						win.focus();
 					}
 				} );
-		} catch (err) {
-			Utils.logError('Error in Xee.showMap(): ' + err);
+		} catch ( err ) {
+			Utils.logError( "Error in Xee.showMap(): " + err );
 		}
 	}
 
@@ -411,9 +408,9 @@ There's no car bound to your Xee account."
 							+	'</tr>';
 					} );
 					html += '</table>';
-					$("#xee-errors").html( html );
+					$( "#xee-errors" ).html( html );
 				} else {
-					$("#xee-errors").html("There's no error.");
+					$( "#xee-errors" ).html( _T( "NoError" ) );
 				}
 			} );
 	}
@@ -443,8 +440,8 @@ There's no car bound to your Xee account."
 				} );*/
 			// Display the errors
 			_drawErrorsList();
-		} catch (err) {
-			Utils.logError('Error in Xee.showErrors(): ' + err);
+		} catch ( err ) {
+			Utils.logError( "Error in Xee.showErrors(): " + err );
 		}
 	}
 

@@ -265,6 +265,31 @@
 		{
 			"id": 103,
 			"label": {
+				"lang_tag": "ui7_xeecar_zones_in",
+				"text": "Whenever _DEVICE_NAME_ in zones"
+			},
+			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "geofence_zones",
+						"text": "Zones"
+					},
+					"dataType": "string",
+					"name": "ZonesIn",
+					"comparisson": "=",
+					"defaultValue": "",
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_in_zones",
+						"text": "_DEVICE_NAME_ is in the zones _ARGUMENT_VALUE_"
+					}
+				}
+			]
+		},
+		{
+			"id": 104,
+			"label": {
 				"lang_tag": "ui7_xeecar_zone_enter",
 				"text": "Whenever _DEVICE_NAME_ enters a zone"
 			},
@@ -288,7 +313,7 @@
 			]
 		},
 		{
-			"id": 104,
+			"id": 105,
 			"label": {
 				"lang_tag": "ui7_xeecar_zone_exit",
 				"text": "Whenever _DEVICE_NAME_ exits a zone"

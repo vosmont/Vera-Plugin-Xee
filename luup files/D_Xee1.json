@@ -26,7 +26,7 @@
 	],
 	"x": 2,
 	"y": 4,
-	"inScene": 0,
+	"inScene": 1,
 	"Tabs": [
 		{
 			"Label": {
@@ -103,7 +103,7 @@
 					"ControlType": "label",
 					"text_align": "left",
 					"Label": {
-						"lang_tag": "ui7_last_message",
+						"lang_tag": "last_message",
 						"text": "Last message"
 					},
 					"Display": {
@@ -185,7 +185,7 @@
 		},
 		{
 			"Label": {
-				"lang_tag": "xee_errors",
+				"lang_tag": "errors",
 				"text": "Errors"
 			},
 			"Position": 4,

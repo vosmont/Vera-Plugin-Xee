@@ -257,8 +257,14 @@ var XeeMap = ( function( $ ) {
 		$.ajax( {
 			url: window.location.origin + window.location.pathname + "?id=lr_Xee&command=setGeofences&newGeofences=" + encodeURIComponent( JSON.stringify( geofences ) ) + "&output_format=json#",
 			dataType: "json"
+		} )
+		.done( function( data ) {
+			console.info(data);
+		} )
+		.fail( function( jqxhr, textStatus, errorThrown ) {
+			
 		} );
-		// TODO : get the result
+
 		_setIsModified( false );
 	}
 
@@ -484,6 +490,25 @@ var XeeMap = ( function( $ ) {
 				window.setTimeout( _updateCars, _pollInterval * 1000 );
 			} );
 	}
+
+	// Get parameters in the querystring
+	function _getParameterByName( name, url ) {
+		if ( !url ) {
+			url = window.location.href;
+		}
+		name = name.replace( /[\[\]]/g, "\\$&" );
+		var regex = new RegExp( "[?&]" + name + "(=([^&#]*)|&|#|$)" ),
+			results = regex.exec(url);
+		if ( !results ) {
+			return null;
+		}
+		if ( !results[2] ) {
+			return '';
+		}
+		return decodeURIComponent( results[2].replace( /\+/g, " "  ) );
+	}
+	_debug = ( _getParameterByName( "debug" ) === "true" );
+	_pollInterval =  parseInt( _getParameterByName( "pollInterval" ), 10 ) || 10;
 
 	return {
 		initialize: _initialize,
