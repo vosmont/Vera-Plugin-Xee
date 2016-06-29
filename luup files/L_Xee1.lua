@@ -121,7 +121,7 @@ local MAP_TEMPLATE = [[
 <html>
 <head>
 	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-	<link rel="stylesheet" type="text/css" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 	<style type="text/css">
 		html { height: 100% }
 		body { height: 100%; margin: 0px; padding: 0px }
@@ -135,8 +135,8 @@ local MAP_TEMPLATE = [[
 		.legend-title { font-weight: bold; }
 		.legend-content { margin-top: 5px; }
 	</style>
-	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js" ></script>
-	<script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3.13&sensor=false"></script>
+	<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js" ></script>
+	<script type="text/javascript" src="//maps.google.com/maps/api/js?v=3.13&sensor=false"></script>
 	<script type="text/javascript" src="J_Xee1_map.js"></script> 
 </head>
  
@@ -884,17 +884,9 @@ API = {
 				UI.showError( "Error" )
 				Variable.set( g_parentDeviceId, VARIABLE.COMM_FAILURE, "1" )
 			end
-			-- For ALTUI
-			luup.attr_set( "status", 2, g_parentDeviceId )
-			--luup.set_failure( 1, g_parentDeviceId )
 		else
 			UI.clearError()
 			Variable.set( g_parentDeviceId, VARIABLE.COMM_FAILURE, "0" )
-			if ( luup.attr_get( "status", g_parentDeviceId ) == "2" ) then
-				-- For ALTUI
-				luup.attr_set( "status", -1, g_parentDeviceId )
-			end
-			--luup.set_failure( 0, g_parentDeviceId )
 		end
 		return data
 	end,
@@ -1035,8 +1027,11 @@ Geofences = {
 			table.insert( distances, { geofence.name, distance } )
 		end
 		if somethingHasChanged then
+			table.sort( zonesIn )
 			Variable.set( deviceId, VARIABLE.CAR_ZONES_IN, table.concat( zonesIn, ";" ) )
+			table.sort( zonesEnter )
 			Variable.set( deviceId, VARIABLE.CAR_ZONE_ENTER, table.concat( zonesEnter, ";" ) )
+			table.sort( zonesExit )
 			Variable.set( deviceId, VARIABLE.CAR_ZONE_EXIT, table.concat( zonesExit, ";" ) )
 		end
 
@@ -1228,13 +1223,13 @@ Cars = {
 				Geofences.update( car.deviceId )
 				carStatus.zonesIn = Variable.get( car.deviceId, VARIABLE.CAR_ZONES_IN )
 			end
-			luup.set_failure( 0, car.deviceId )
+			Variable.set( car.deviceId, VARIABLE.COMM_FAILURE, "0" )
 			car.status = carStatus
 			--car.status = 1
 			return true
 		else
 			error( "Can not retrieve car #" .. carId .. "(" .. tostring( car.name ) .. ") status", "Cars.update" )
-			luup.set_failure( 1, car.deviceId )
+			Variable.set( car.deviceId, VARIABLE.COMM_FAILURE, "1" )
 			car.status = {}
 			--car.status = 0
 			return false

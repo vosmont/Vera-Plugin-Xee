@@ -157,6 +157,7 @@
 				"text": "Authentification"
 			},
 			"Position": 1,
+			"top_navigation_tab": 1,
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
 			"Function": "Xee.showAuthentification"
@@ -256,6 +257,8 @@
 				{
 					"id": 1,
 					"dataType": "i1",
+					"name": "CommFailure",
+					"comparisson": "=",
 					"defaultValue": "1",
 					"allowedValueList": [
 						{
@@ -279,10 +282,7 @@
 								"text": "Whenever the _DEVICE_NAME_ has an authentification failure"
 							}
 						}
-					],
-					"name": "CommFailure",
-					"comparisson": "=",
-					"defaultValue": "1"
+					]
 				}
 			]
 		}
