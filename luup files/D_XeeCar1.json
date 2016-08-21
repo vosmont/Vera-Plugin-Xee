@@ -339,6 +339,79 @@
 		},
 
 		{
+			"id": 106,
+			"label": {
+				"lang_tag": "ui7_xeecar_zone_ids_in",
+				"text": "Whenever _DEVICE_NAME_ in zone ids"
+			},
+			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "geofence_zone_ids",
+						"text": "Zone ids"
+					},
+					"name": "ZoneIdsIn",
+					"comparisson": "=",
+					"defaultValue": "",
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_in_zone_ids",
+						"text": "_DEVICE_NAME_ is in the zone ids _ARGUMENT_VALUE_"
+					}
+				}
+			]
+		},
+		{
+			"id": 107,
+			"label": {
+				"lang_tag": "ui7_xeecar_zone_id_enter",
+				"text": "Whenever _DEVICE_NAME_ enters a zone id"
+			},
+			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "geofence_zone_id",
+						"text": "Zone id"
+					},
+					"name": "ZoneIdEnter",
+					"comparisson": "=",
+					"defaultValue": "",
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_enters_zone_id",
+						"text": "_DEVICE_NAME_ enters the zone id _ARGUMENT_VALUE_"
+					}
+				}
+			]
+		},
+		{
+			"id": 108,
+			"label": {
+				"lang_tag": "ui7_xeecar_zone_id_exit",
+				"text": "Whenever _DEVICE_NAME_ exits a zone id"
+			},
+			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
+			"argumentList": [
+				{
+					"id": 1,
+					"prefix": {
+						"lang_tag": "geofence_zone_id",
+						"text": "Zone id"
+					},
+					"name": "ZoneIdExit",
+					"comparisson": "=",
+					"defaultValue": "",
+					"HumanFriendlyText": {
+						"lang_tag": "hft_xeecar_exits_zone_id",
+						"text": "_DEVICE_NAME_ exits the zone id _ARGUMENT_VALUE_"
+					}
+				}
+			]
+		},
+
+		{
 			"id": 201,
 			"label": {
 				"lang_tag": "xeecar_fuel_level_goes_over",
@@ -583,35 +656,6 @@
 					"HumanFriendlyText": {
 						"lang_tag": "hft_odometer_goes_over",
 						"text": "_DEVICE_NAME_ odometer goes over _ARGUMENT_VALUE_ km"
-					}
-				}
-			]
-		},
-		{
-			"id": 209,
-			"label": {
-				"lang_tag": "xeecar_odometer_goes_below",
-				"text": "Odometer goes below"
-			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
-			"argumentList": [
-				{
-					"id": 1,
-					"prefix": {
-						"lang_tag": "odometer",
-						"text": "Odometer"
-					},
-					"dataType": "i4",
-					"name": "SignalOdometer",
-					"comparisson": "<",
-					"defaultValue": "0",
-					"suffix": {
-						"lang_tag": "km",
-						"text": "km"
-					},
-					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_odometer_goes_below",
-						"text": "_DEVICE_NAME_ odometer goes below _ARGUMENT_VALUE_ km"
 					}
 				}
 			]

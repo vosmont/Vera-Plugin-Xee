@@ -18,7 +18,7 @@ local Url = require( "socket.url" )
 
 _NAME = "Xee"
 _DESCRIPTION = "Add your cars in your scenes"
-_VERSION = "0.4"
+_VERSION = "0.5"
 _AUTHOR = "vosmont"
 
 local XEE_CLIENT_ID = "A7V3mOLy8Qm36nncz6Hy"
@@ -85,6 +85,9 @@ local VARIABLE = {
 	CAR_ZONES_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZonesIn", true },
 	CAR_ZONE_ENTER = { "urn:upnp-org:serviceId:GeoFence1", "ZoneEnter", true },
 	CAR_ZONE_EXIT = { "urn:upnp-org:serviceId:GeoFence1", "ZoneExit", true },
+	CAR_ZONE_IDS_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdsIn", true },
+	CAR_ZONE_ID_ENTER = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdEnter", true },
+	CAR_ZONE_ID_EXIT = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdExit", true },
 	-- Xee car accelerometer
 	CAR_ACCELEROMETER = { "urn:upnp-org:serviceId:XeeCar1", "Accelerometer", true },
 	CAR_ACCELEROMETER_DATE = { "urn:upnp-org:serviceId:XeeCar1", "AccelerometerDate", true }
@@ -1001,38 +1004,58 @@ Geofences = {
 			longitude = Variable.get( deviceId, VARIABLE.CAR_LONGITUDE )
 		}
 		local distances = {}
-		local zonesIn = string.split( ( Variable.getOrInit( deviceId, VARIABLE.CAR_ZONES_IN, "" ) or "" ) , ";" )
-		local zonesEnter, zonesExit = {}, {}
+		local zoneIdsIn = string.split( ( Variable.getOrInit( deviceId, VARIABLE.CAR_ZONE_IDS_IN, "" ) or "" ) , ";", tonumber )
+		local zoneIdsEnter, zoneIdsExit = {}, {}
 		local somethingHasChanged = false
-		for _, geofence in ipairs( g_geofences ) do
+		for zoneId, geofence in ipairs( g_geofences ) do
 			local distance = Geoloc.getDistance( location, geofence )
-			local wasIn, pos = table.contains( zonesIn, geofence.name ) 
+			local wasIn, posIn = table.contains( zoneIdsIn, zoneId )
 			if ( distance <= geofence.radius ) then
 				-- Device is in the zone
 				if not wasIn then
-					debug( "Device #" .. tostring( deviceId ) .. " enters the zone '" ..  geofence.name .. "'", "Geofences.update")
-					table.insert( zonesIn, geofence.name )
-					table.insert( zonesEnter, geofence.name )
+					debug( "Device #" .. tostring( deviceId ) .. " enters the zone #" .. zoneId .. " '" ..  geofence.name .. "'", "Geofences.update")
+					table.insert( zoneIdsIn, zoneId )
+					table.insert( zoneIdsEnter, zoneId )
 					somethingHasChanged = true
 				end
 			else
 				-- Device is not in the zone
 				if wasIn then
-					debug( "Device #" .. tostring( deviceId ) .. " exits the zone '" ..  geofence.name .. "'", "Geofences.update")
-					table.remove( zonesIn, pos )
-					table.insert( zonesExit, geofence.name )
+					debug( "Device #" .. tostring( deviceId ) .. " exits the zone #" .. zoneId .. " '" ..  geofence.name .. "'", "Geofences.update")
+					table.remove( zoneIdsIn, posIn )
+					table.insert( zoneIdsExit, zoneId )
 					somethingHasChanged = true
 				end
 			end
 			table.insert( distances, { geofence.name, distance } )
 		end
 		if somethingHasChanged then
-			table.sort( zonesIn )
+			table.sort( zoneIdsIn )
+			Variable.set( deviceId, VARIABLE.CAR_ZONE_IDS_IN, table.concat( zoneIdsIn, ";" ) )
+			local zonesIn = {}
+			for _, zoneId in ipairs( zoneIdsIn ) do
+				table.insert( zonesIn, g_geofences[zoneId].name )
+			end
 			Variable.set( deviceId, VARIABLE.CAR_ZONES_IN, table.concat( zonesIn, ";" ) )
-			table.sort( zonesEnter )
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_ENTER, table.concat( zonesEnter, ";" ) )
-			table.sort( zonesExit )
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_EXIT, table.concat( zonesExit, ";" ) )
+
+			if ( #zoneIdsEnter > 0 ) then
+				table.sort( zoneIdsEnter )
+				Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_ENTER, zoneIdsEnter[ 1 ] )
+				Variable.set( deviceId, VARIABLE.CAR_ZONE_ENTER, g_geofences[ zoneIdsEnter[ 1 ] ].name )
+			end
+
+			if ( #zoneIdsExit > 0 ) then
+				table.sort( zoneIdsExit )
+				Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_EXIT, zoneIdsExit[ 1 ] )
+				Variable.set( deviceId, VARIABLE.CAR_ZONE_EXIT, g_geofences[ zoneIdsExit[ 1 ] ].name )
+			end
+
+			-- Pulse
+			luup.sleep( 200 )
+			Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_ENTER, "" )
+			Variable.set( deviceId, VARIABLE.CAR_ZONE_ENTER, "" )
+			Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_EXIT, "" )
+			Variable.set( deviceId, VARIABLE.CAR_ZONE_EXIT, "" )
 		end
 
 		-- Update distances
@@ -1304,6 +1327,7 @@ local _handlerCommands = {
 		Variable.set( car.deviceId, VARIABLE.CAR_LONGITUDE, car.status.location.longitude )
 		Geofences.update( car.deviceId )
 		car.status.zonesIn = Variable.get( car.deviceId, VARIABLE.CAR_ZONES_IN )
+		return tostring( json.encode( { result = true } ) ), "application/json"
 	end,
 
 	["getGeofences"] = function( params, outputFormat )
