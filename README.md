@@ -15,6 +15,6 @@ If the car is in the zone of the house and is unlocked since several minutes, th
 <br/>
 <br/>
 
-**Compatible with UI7 / VeraPlus, VeraEdge, Vera3, VeraLite / openLuup**
+**Compatible with UI7 / VeraPlus, VeraEdge, Vera3, VeraLite / [openLuup](https://github.com/akbooer/openLuup)**
 
 More informations here : http://www.touteladomotique.com/forum/viewtopic.php?f=48&t=18148
