@@ -1,4 +1,4 @@
-# ![Plugin Xee for the Vera](media/xee_logo.png) Vera-Plugin-Xee
+# <img align="left" src="media/xee_logo.png"> Vera-Plugin-Xee
 
 Retrieve the informations of your [XeeConnect](http://xee.com/) in your [Vera Control, Ltd.](http://getvera.com/) Home Controller.
 
