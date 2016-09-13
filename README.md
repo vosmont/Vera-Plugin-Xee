@@ -10,4 +10,7 @@ You will be able to handle several car events (localization, lock status, fuel l
 A scene example :
 If the car is in the zone of the house and is unlocked since several minutes, then send a warning to remind locking the car.
 
+
+**Compatible with UI7 / VeraPlus, VeraEdge, Vera3, VeraLite / openLuup**
+
 More informations here : http://www.touteladomotique.com/forum/viewtopic.php?f=48&t=18148
