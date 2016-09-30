@@ -524,7 +524,7 @@
 							"Off": "0",
 							"HumanFriendlyText": {
 								"lang_tag": "xeecar_warnings_are_off",
-								"text": "_DEVICE_NAME_ warings are off"
+								"text": "_DEVICE_NAME_ warnings are off"
 							}
 						},
 						{
@@ -716,6 +716,40 @@
 						"lang_tag": "hft_xeecar_battery_voltage_goes_below",
 						"text": "_DEVICE_NAME_ battery voltage goes below _ARGUMENT_VALUE_ V"
 					}
+				}
+			]
+		},
+
+		{
+			"id": 212,
+			"label": {
+				"lang_tag": "xeecar_signal_HeadLightSts",
+				"text": "Headlights status"
+			},
+			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"argumentList": [
+				{
+					"id": 1,
+					"dataType": "boolean",
+					"name": "SignalHeadLightSts",
+					"comparisson": "=",
+					"defaultValue": "1",
+					"allowedValueList": [
+						{
+							"Off": "0",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_headlights_are_off",
+								"text": "_DEVICE_NAME_ headlights are off"
+							}
+						},
+						{
+							"On": "1",
+							"HumanFriendlyText": {
+								"lang_tag": "xeecar_headlights_are_on",
+								"text": "_DEVICE_NAME_ headlights are on"
+							}
+						}
+					]
 				}
 			]
 		}

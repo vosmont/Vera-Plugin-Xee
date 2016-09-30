@@ -18,7 +18,7 @@ local Url = require( "socket.url" )
 
 _NAME = "Xee"
 _DESCRIPTION = "Add your cars in your scenes"
-_VERSION = "0.5"
+_VERSION = "0.6"
 _AUTHOR = "vosmont"
 
 local XEE_CLIENT_ID = "A7V3mOLy8Qm36nncz6Hy"
@@ -157,110 +157,15 @@ local MAP_TEMPLATE = [[
 -- Table functions
 -- **************************************************
 
--- Merges (deeply) the contents of one table (t2) into another (t1)
-local function table_extend( t1, t2 )
-	if ( ( t1 == nil ) or ( t2 == nil ) ) then
-		return
-	end
-	for key, value in pairs( t2 ) do
-		if ( type( value ) == "table" ) then
-			if ( type( t1[key] ) == "table" ) then
-				t1[key] = table_extend( t1[key], value )
-			else
-				t1[key] = table_extend( {}, value )
-			end
-		elseif ( value ~= nil ) then
-			t1[key] = value
+-- Checks if a table contains the given item.
+-- Returns true and the key / index of the item if found, or false if not found.
+function table_contains( t, item )
+	for k, v in pairs( t ) do
+		if ( v == item ) then
+			return true, k
 		end
 	end
-	return t1
-end
-
-local table = table_extend( {}, table ) -- do not pollute original "table"
-do -- Extend table
-	table.extend = table_extend
-
-	-- Checks if a table contains the given item.
-	-- Returns true and the key / index of the item if found, or false if not found.
-	function table.contains( t, item )
-		for k, v in pairs( t ) do
-			if ( v == item ) then
-				return true, k
-			end
-		end
-		return false
-	end
-
-	-- Checks if table contains all the given items (table).
-	function table.containsAll( t1, items )
-		if ( ( type( t1 ) ~= "table" ) or ( type( t2 ) ~= "table" ) ) then
-			return false
-		end
-		for _, v in pairs( items ) do
-			if not table.contains( t1, v ) then
-				return false
-			end
-		end
-		return true
-	end
-
-	-- Appends the contents of the second table at the end of the first table
-	function table.append( t1, t2, noDuplicate )
-		if ( ( t1 == nil ) or ( t2 == nil ) ) then
-			return
-		end
-		local table_insert = table.insert
-		table.foreach(
-			t2,
-			function ( _, v )
-				if ( noDuplicate and table.contains( t1, v ) ) then
-					return
-				end
-				table_insert( t1, v )
-			end
-		)
-		return t1
-	end
-
-	-- Extracts a subtable from the given table
-	function table.extract( t, start, length )
-		if ( start < 0 ) then
-			start = #t + start + 1
-		end
-		length = length or ( #t - start + 1 )
-
-		local t1 = {}
-		for i = start, start + length - 1 do
-			t1[#t1 + 1] = t[i]
-		end
-		return t1
-	end
-
-	function table.concatChar( t )
-		local res = ""
-		for i = 1, #t do
-			res = res .. string.char( t[i] )
-		end
-		return res
-	end
-
-	-- Concatenates a table of numbers into a string with Hex separated by the given separator.
-	function table.concatHex( t, sep, start, length )
-		sep = sep or "-"
-		start = start or 1
-		if ( start < 0 ) then
-			start = #t + start + 1
-		end
-		length = length or ( #t - start + 1 )
-		local s = _toHex( t[start] )
-		if ( length > 1 ) then
-			for i = start + 1, start + length - 1 do
-				s = s .. sep .. _toHex( t[i] )
-			end
-		end
-		return s
-	end
-
+	return false
 end
 
 
@@ -268,57 +173,31 @@ end
 -- String functions
 -- **************************************************
 
-local string = table_extend( {}, string ) -- do not pollute original "string"
-do -- Extend string
-	-- Pads string to given length with given char from left.
-	function string.lpad( s, length, c )
-		s = tostring( s )
-		length = length or 2
-		c = c or " "
-		return c:rep( length - #s ) .. s
-	end
+-- Pads string to given length with given char from right.
+function string_rpad( s, length, c )
+	s = tostring( s )
+	length = length or 2
+	c = char or " "
+	return s .. c:rep( length - #s )
+end
 
-	-- Pads string to given length with given char from right.
-	function string.rpad( s, length, c )
-		s = tostring( s )
-		length = length or 2
-		c = char or " "
-		return s .. c:rep( length - #s )
+-- Splits a string based on the given separator. Returns a table.
+function string_split( s, sep, convert, convertParam )
+	if ( type( convert ) ~= "function" ) then
+		convert = nil
 	end
-
-	-- Splits a string based on the given separator. Returns a table.
-	function string.split( s, sep, convert, convertParam )
-		if ( type( convert ) ~= "function" ) then
-			convert = nil
-		end
-		if ( type( s ) ~= "string" ) then
-			return {}
-		end
-		sep = sep or " "
-		local t = {}
-		for token in s:gmatch( "[^" .. sep .. "]+" ) do
-			if ( convert ~= nil ) then
-				token = convert( token, convertParam )
-			end
-			table.insert( t, token )
-		end
-		return t
+	if ( type( s ) ~= "string" ) then
+		return {}
 	end
-
-	-- Formats a string into hex.
-	function string.formatToHex( s, sep )
-		sep = sep or "-"
-		local result = ""
-		if ( s ~= nil ) then
-			for i = 1, string.len( s ) do
-				if ( i > 1 ) then
-					result = result .. sep
-				end
-				result = result .. string.format( "%02X", string.byte( s, i ) )
-			end
+	sep = sep or " "
+	local t = {}
+	for token in s:gmatch( "[^" .. sep .. "]+" ) do
+		if ( convert ~= nil ) then
+			token = convert( token, convertParam )
 		end
-		return result
+		table.insert( t, token )
 	end
+	return t
 end
 
 
@@ -333,7 +212,7 @@ function log( msg, methodName, lvl )
 	else
 		methodName = "(" .. _NAME .. "::" .. tostring( methodName ) .. ")"
 	end
-	luup.log( string.rpad( methodName, 45 ) .. " " .. tostring( msg ), lvl )
+	luup.log( string_rpad( methodName, 45 ) .. " " .. tostring( msg ), lvl )
 end
 
 local function debug() end
@@ -362,7 +241,7 @@ Variable = {
 		if ( ( type( variable ) == "table" ) and ( type( variable[4] ) == "string" ) ) then
 			local variableTimestamp = VARIABLE[ variable[4] ]
 			if ( variableTimestamp ~= nil ) then
-				return luup.variable_get( variableTimestamp[1], variableTimestamp[2], deviceId )
+				return tonumber( ( luup.variable_get( variableTimestamp[1], variableTimestamp[2], deviceId ) ) )
 			end
 		end
 		return nil
@@ -378,7 +257,7 @@ Variable = {
 		end
 	end,
 
-	-- Get variable value (can deal with unknown variable TODO)
+	-- Get variable value (can deal with unknown variable)
 	get = function( deviceId, variable )
 		deviceId = tonumber( deviceId )
 		if ( deviceId == nil ) then
@@ -445,9 +324,10 @@ Variable = {
 	getOrInit = function( deviceId, variable, defaultValue )
 		local value, timestamp = Variable.get( deviceId, variable )
 		if ( ( value == nil ) or (  value == "" ) ) then
-			Variable.set( deviceId, variable, defaultValue )
 			value = defaultValue
+			Variable.set( deviceId, variable, value )
 			timestamp = os.time()
+			Variable.setTimestamp( deviceId, variable, timestamp )
 		end
 		return value, timestamp
 	end,
@@ -953,8 +833,8 @@ Geofences = {
 	get = function( mainDeviceId )
 		local strGeofences = Variable.get( mainDeviceId, VARIABLE.GEOFENCES )
 		g_geofences = {}
-		for _, strGeofence in ipairs( string.split( strGeofences, "|" ) ) do
-			local geoParams = string.split( strGeofence, ";" )
+		for _, strGeofence in ipairs( string_split( strGeofences, "|" ) ) do
+			local geoParams = string_split( strGeofence, ";" )
 			table.insert( g_geofences, {
 				name      = geoParams[1],
 				latitude  = tonumber( geoParams[2] ),
@@ -1004,12 +884,12 @@ Geofences = {
 			longitude = Variable.get( deviceId, VARIABLE.CAR_LONGITUDE )
 		}
 		local distances = {}
-		local zoneIdsIn = string.split( ( Variable.getOrInit( deviceId, VARIABLE.CAR_ZONE_IDS_IN, "" ) or "" ) , ";", tonumber )
+		local zoneIdsIn = string_split( ( Variable.getOrInit( deviceId, VARIABLE.CAR_ZONE_IDS_IN, "" ) or "" ) , ";", tonumber )
 		local zoneIdsEnter, zoneIdsExit = {}, {}
 		local somethingHasChanged = false
 		for zoneId, geofence in ipairs( g_geofences ) do
 			local distance = Geoloc.getDistance( location, geofence )
-			local wasIn, posIn = table.contains( zoneIdsIn, zoneId )
+			local wasIn, posIn = table_contains( zoneIdsIn, zoneId )
 			if ( distance <= geofence.radius ) then
 				-- Device is in the zone
 				if not wasIn then
@@ -1183,8 +1063,8 @@ Cars = {
 							id = tonumber( carId ),
 							name = device.description,
 							deviceId = deviceId,
-							--status = 1,
 							status = {},
+							lastUpdate = 0,
 							nextPollDate = 0
 						}
 						table.insert( g_cars, car )
@@ -1214,11 +1094,10 @@ Cars = {
 			warning( "Car #" .. carId .. " is unknown", "Cars.update" )
 			return false
 		end
-		debug( "Update car #" .. carId, "Cars.update" )
+		debug( "Update car #" .. carId .. "(" .. car.name .. ")", "Cars.update" )
 		local carStatus = API.getCarStatus( carId )
 		if ( carStatus ~= nil ) then
-			car.lastUpdate = os.time()
-			Variable.set( car.deviceId, VARIABLE.CAR_LAST_UPDATE_DATE, car.lastUpdate )
+
 			-- Location
 			if ( carStatus.location ) then
 				Variable.set( car.deviceId, VARIABLE.CAR_LATITUDE, carStatus.location.latitude )
@@ -1227,34 +1106,55 @@ Cars = {
 				Variable.set( car.deviceId, VARIABLE.CAR_HEADING, carStatus.location.heading )
 				Variable.set( car.deviceId, VARIABLE.CAR_LOCATION_DATE, API.convertToTimestamp( carStatus.location.date ) )
 			end
+
 			-- TODO : accelerometer ?
+
 			-- Signals
 			if ( carStatus.signals ) then
+				local lastUpdate = tonumber(( Variable.get( g_parentDeviceId, VARIABLE.LAST_UPDATE_DATE ) )) or 0
 				for _, signal in ipairs( carStatus.signals ) do
 					local variableName = "Signal" .. tostring( signal.name )
-					local formerValue = luup.variable_get( "urn:upnp-org:serviceId:XeeCar1", variableName, car.deviceId )
+					local formerValue = luup.variable_get( "urn:upnp-org:serviceId:XeeCar1", variableName, car.deviceId ) or ""
 					local formerValueDate = luup.variable_get( "urn:upnp-org:serviceId:XeeCar1", variableName .. "Date", car.deviceId )
-					local timestamp = API.convertToTimestamp( signal.date )
-					if ( ( formerValue ~= tostring( signal.value ) ) or ( formerValueDate ~= tostring( timestamp ) ) ) then
-						luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName, signal.value, car.deviceId )
-						luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName .. "Date", timestamp, car.deviceId )
+					local timestamp = API.convertToTimestamp( signal.date ) or 0
+					local hasValueChanged, hasDateChanged = ( formerValue ~= tostring( signal.value ) ), ( formerValueDate ~= tostring( timestamp ) )
+					local hasToPulse = false
+					if ( hasValueChanged or hasDateChanged ) then
+						if ( ( timestamp > lastUpdate ) and string.match( signal.name, ".*Sts$" ) and not hasValueChanged and ( formerValue == "0" ) ) then
+							-- Status signal has changed during two poll (take change only after a sync)
+							hasValueChanged = true
+							signal.value = "1"
+							hasToPulse = true
+						end
+						if hasValueChanged then
+							luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName, signal.value, car.deviceId )
+						end
+						if hasDateChanged then
+							luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName .. "Date", timestamp, car.deviceId )
+						end
+						if hasToPulse then
+							debug( "Pulse signal " ..  signal.name .. " for car #" .. carId, "Cars.update" )
+							luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName, "0", car.deviceId )
+						end
 					end
 				end
 			end
+
 			-- Geofences
 			if ( carStatus.location ) then
 				Geofences.update( car.deviceId )
 				carStatus.zonesIn = Variable.get( car.deviceId, VARIABLE.CAR_ZONES_IN )
 			end
+
+			car.lastUpdate = os.time()
+			Variable.set( car.deviceId, VARIABLE.CAR_LAST_UPDATE_DATE, car.lastUpdate )
 			Variable.set( car.deviceId, VARIABLE.COMM_FAILURE, "0" )
 			car.status = carStatus
-			--car.status = 1
 			return true
 		else
 			error( "Can not retrieve car #" .. carId .. "(" .. tostring( car.name ) .. ") status", "Cars.update" )
 			Variable.set( car.deviceId, VARIABLE.COMM_FAILURE, "1" )
 			car.status = {}
-			--car.status = 0
 			return false
 		end
 	end
@@ -1416,7 +1316,7 @@ local function _initPluginInstance()
 	g_params.accessToken = Variable.getOrInit( g_parentDeviceId, VARIABLE.ACCESS_TOKEN, "" )
 	g_params.refreshToken = Variable.getOrInit( g_parentDeviceId, VARIABLE.REFRESH_TOKEN, "" )
 	g_params.tokenExpirationDate = Variable.getOrInit( g_parentDeviceId, VARIABLE.TOKEN_EXPIRATION_DATE, "" )
-	g_params.pollSettings = string.split( Variable.getOrInit( g_parentDeviceId, VARIABLE.POLL_SETTINGS, "60,700,700" ), ",", tonumber )
+	g_params.pollSettings = string_split( Variable.getOrInit( g_parentDeviceId, VARIABLE.POLL_SETTINGS, "60,700,700" ), ",", tonumber )
 	if ( ( g_params.pollSettings[ 1 ] or 0 ) < MIN_POLL_INTERVAL ) then
 		g_params.pollSettings[ 1 ] = MIN_POLL_INTERVAL
 	end
