@@ -55,8 +55,8 @@
 					"left": 0,
 					"text_align": "left",
 					"Label": {
-						"lang_tag": "xeecar_distances",
-						"text": "Distances"
+						"lang_tag": "xeevehicle_distance",
+						"text": "Distance"
 					},
 					"Display": {
 						"Top": 25,
@@ -72,7 +72,7 @@
 					"text_align": "left",
 					"Display": {
 						"Service": "urn:upnp-org:serviceId:GeoFence1",
-						"Variable": "Distances",
+						"Variable": "Distance",
 						"Top": 25,
 						"Left": 100
 					}
@@ -86,8 +86,8 @@
 					"ControlType": "label",
 					"text_align": "left",
 					"Label": {
-						"lang_tag": "xeecar_zones_in",
-						"text": "In zones"
+						"lang_tag": "xeevehicle_zone_in",
+						"text": "In zone"
 					},
 					"Display": {
 						"Top": 40,
@@ -109,14 +109,14 @@
 		},
 		{
 			"Label": {
-				"lang_tag": "xee_car",
-				"text": "Car"
+				"lang_tag": "xee_vehicle",
+				"text": "Vehicle"
 			},
 			"Position": 1,
 			"top_navigation_tab": "1",
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
-			"Function": "Xee.showCar"
+			"Function": "Xee.showVehicle"
 		},
 		{
 			"Label": {
@@ -163,8 +163,8 @@
 		{
 			"id": 1,
 			"label": {
-				"lang_tag": "xeecar_failure",
-				"text": "Car failure"
+				"lang_tag": "xee_vehicle_failure",
+				"text": "Vehicle failure"
 			},
 			"serviceId": "urn:micasaverde-com:serviceId:HaDevice1",
 			"argumentList": [
@@ -204,10 +204,10 @@
 		{
 			"id":101,
 			"label": {
-				"lang_tag": "xeecar_distance_goes_over",
+				"lang_tag": "xee_vehicle_distance_goes_over",
 				"text": "Distance goes over"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -225,7 +225,7 @@
 						"text": "meters"
 					},
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_distance_goes_over",
+						"lang_tag": "hft_xee_vehicle_distance_goes_over",
 						"text": "_DEVICE_NAME_ distance from home goes over _ARGUMENT_VALUE_ meters"
 					}
 				}
@@ -234,10 +234,10 @@
 		{
 			"id":102,
 			"label": {
-				"lang_tag": "xeecar_distance_goes_below",
+				"lang_tag": "xee_vehicle_distance_goes_below",
 				"text": "Distance goes below"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -255,7 +255,7 @@
 						"text": "meters"
 					},
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_distance_goes_over",
+						"lang_tag": "hft_xee_vehicle_distance_goes_over",
 						"text": "_DEVICE_NAME_ distance from home goes below _ARGUMENT_VALUE_ meters"
 					}
 				}
@@ -265,7 +265,7 @@
 		{
 			"id": 103,
 			"label": {
-				"lang_tag": "ui7_xeecar_zones_in",
+				"lang_tag": "ui7_xee_vehicle_zones_in",
 				"text": "Whenever _DEVICE_NAME_ in zones"
 			},
 			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
@@ -281,7 +281,7 @@
 					"comparisson": "=",
 					"defaultValue": "",
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_in_zones",
+						"lang_tag": "hft_xee_vehicle_in_zones",
 						"text": "_DEVICE_NAME_ is in the zones _ARGUMENT_VALUE_"
 					}
 				}
@@ -290,7 +290,7 @@
 		{
 			"id": 104,
 			"label": {
-				"lang_tag": "ui7_xeecar_zone_enter",
+				"lang_tag": "ui7_xee_vehicle_zone_enter",
 				"text": "Whenever _DEVICE_NAME_ enters a zone"
 			},
 			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
@@ -306,7 +306,7 @@
 					"comparisson": "=",
 					"defaultValue": "",
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_enters_zone",
+						"lang_tag": "hft_xee_vehicle_enters_zone",
 						"text": "_DEVICE_NAME_ enters the zone _ARGUMENT_VALUE_"
 					}
 				}
@@ -315,7 +315,7 @@
 		{
 			"id": 105,
 			"label": {
-				"lang_tag": "ui7_xeecar_zone_exit",
+				"lang_tag": "ui7_xee_vehicle_zone_exit",
 				"text": "Whenever _DEVICE_NAME_ exits a zone"
 			},
 			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
@@ -331,7 +331,7 @@
 					"comparisson": "=",
 					"defaultValue": "",
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_exits_zone",
+						"lang_tag": "hft_xee_vehicle_exits_zone",
 						"text": "_DEVICE_NAME_ exits the zone _ARGUMENT_VALUE_"
 					}
 				}
@@ -341,7 +341,7 @@
 		{
 			"id": 106,
 			"label": {
-				"lang_tag": "ui7_xeecar_zone_ids_in",
+				"lang_tag": "ui7_xee_vehicle_zone_ids_in",
 				"text": "Whenever _DEVICE_NAME_ in zone ids"
 			},
 			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
@@ -356,7 +356,7 @@
 					"comparisson": "=",
 					"defaultValue": "",
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_in_zone_ids",
+						"lang_tag": "hft_xee_vehicle_in_zone_ids",
 						"text": "_DEVICE_NAME_ is in the zone ids _ARGUMENT_VALUE_"
 					}
 				}
@@ -365,7 +365,7 @@
 		{
 			"id": 107,
 			"label": {
-				"lang_tag": "ui7_xeecar_zone_id_enter",
+				"lang_tag": "ui7_xee_vehicle_zone_id_enter",
 				"text": "Whenever _DEVICE_NAME_ enters a zone id"
 			},
 			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
@@ -380,7 +380,7 @@
 					"comparisson": "=",
 					"defaultValue": "",
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_enters_zone_id",
+						"lang_tag": "hft_xee_vehicle_enters_zone_id",
 						"text": "_DEVICE_NAME_ enters the zone id _ARGUMENT_VALUE_"
 					}
 				}
@@ -389,7 +389,7 @@
 		{
 			"id": 108,
 			"label": {
-				"lang_tag": "ui7_xeecar_zone_id_exit",
+				"lang_tag": "ui7_xee_vehicle_zone_id_exit",
 				"text": "Whenever _DEVICE_NAME_ exits a zone id"
 			},
 			"serviceId": "urn:upnp-org:serviceId:GeoFence1",
@@ -404,7 +404,7 @@
 					"comparisson": "=",
 					"defaultValue": "",
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_exits_zone_id",
+						"lang_tag": "hft_xee_vehicle_exits_zone_id",
 						"text": "_DEVICE_NAME_ exits the zone id _ARGUMENT_VALUE_"
 					}
 				}
@@ -414,10 +414,10 @@
 		{
 			"id": 201,
 			"label": {
-				"lang_tag": "xeecar_fuel_level_goes_over",
+				"lang_tag": "xee_vehicle_fuel_level_goes_over",
 				"text": "Fuel level goes over"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -435,7 +435,7 @@
 						"text": "liters"
 					},
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_fuel_level_goes_over",
+						"lang_tag": "hft_xee_vehicle_fuel_level_goes_over",
 						"text": "_DEVICE_NAME_ fuel level goes over _ARGUMENT_VALUE_ liters"
 					}
 				}
@@ -444,10 +444,10 @@
 		{
 			"id": 202,
 			"label": {
-				"lang_tag": "xeecar_fuel_level_goes_below",
+				"lang_tag": "xee_vehicle_fuel_level_goes_below",
 				"text": "Fuel level goes below"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -465,7 +465,7 @@
 						"text": "liters"
 					},
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_fuel_level_goes_over",
+						"lang_tag": "hft_xee_vehicle_fuel_level_goes_over",
 						"text": "_DEVICE_NAME_ fuel level goes below _ARGUMENT_VALUE_ liters"
 					}
 				}
@@ -475,10 +475,10 @@
 		{
 			"id": 203,
 			"label": {
-				"lang_tag": "xeecar_signal_LockSts",
+				"lang_tag": "xee_vehicle_signal_LockSts",
 				"text": "Lock status"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -490,14 +490,14 @@
 						{
 							"Off": "0",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_is_unlocked",
+								"lang_tag": "xee_vehicle_is_unlocked",
 								"text": "_DEVICE_NAME_ is unlocked"
 							}
 						},
 						{
 							"On": "1",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_is_locked",
+								"lang_tag": "xee_vehicle_is_locked",
 								"text": "_DEVICE_NAME_ is locked"
 							}
 						}
@@ -508,10 +508,10 @@
 		{
 			"id": 204,
 			"label": {
-				"lang_tag": "xeecar_signal_HazardSts",
+				"lang_tag": "xee_vehicle_signal_HazardSts",
 				"text": "Warnings status"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -523,14 +523,14 @@
 						{
 							"Off": "0",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_warnings_are_off",
+								"lang_tag": "xee_vehicle_warnings_are_off",
 								"text": "_DEVICE_NAME_ warnings are off"
 							}
 						},
 						{
 							"On": "1",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_warnings_are_on",
+								"lang_tag": "xee_vehicle_warnings_are_on",
 								"text": "_DEVICE_NAME_ warnings are on"
 							}
 						}
@@ -541,10 +541,10 @@
 		{
 			"id": 205,
 			"label": {
-				"lang_tag": "xeecar_signal_ignition_status",
+				"lang_tag": "xee_vehicle_signal_ignition_status",
 				"text": "Ignition status"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -556,14 +556,14 @@
 						{
 							"Off": "0",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_engine_is_off",
+								"lang_tag": "xee_vehicle_engine_is_off",
 								"text": "_DEVICE_NAME_ engine is off"
 							}
 						},
 						{
 							"On": "1",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_engine_is_on",
+								"lang_tag": "xee_vehicle_engine_is_on",
 								"text": "_DEVICE_NAME_ engine is on"
 							}
 						}
@@ -575,10 +575,10 @@
 		{
 			"id": 206,
 			"label": {
-				"lang_tag": "xeecar_speed_goes_over",
+				"lang_tag": "xee_vehicle_speed_goes_over",
 				"text": "Speed goes over"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -595,7 +595,7 @@
 						"text": "km/h"
 					},
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_speed_goes_over",
+						"lang_tag": "hft_xee_vehicle_speed_goes_over",
 						"text": "_DEVICE_NAME_ speed goes over _ARGUMENT_VALUE_ km/h"
 					}
 				}
@@ -604,10 +604,10 @@
 		{
 			"id": 207,
 			"label": {
-				"lang_tag": "xeecar_speed_goes_below",
+				"lang_tag": "xee_vehicle_speed_goes_below",
 				"text": "Speed goes below"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -624,7 +624,7 @@
 						"text": "km/h"
 					},
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_speed_goes_below",
+						"lang_tag": "hft_xee_vehicle_speed_goes_below",
 						"text": "_DEVICE_NAME_ speed goes below _ARGUMENT_VALUE_ km/h"
 					}
 				}
@@ -634,10 +634,10 @@
 		{
 			"id": 208,
 			"label": {
-				"lang_tag": "xeecar_odometer_goes_over",
+				"lang_tag": "xee_vehicle_odometer_goes_over",
 				"text": "Odometer goes over"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -664,10 +664,10 @@
 		{
 			"id": 210,
 			"label": {
-				"lang_tag": "xeecar_battery_voltage_goes_over",
+				"lang_tag": "xee_vehicle_battery_voltage_goes_over",
 				"text": "Battery voltage goes over"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -693,10 +693,10 @@
 		{
 			"id": 211,
 			"label": {
-				"lang_tag": "xeecar_battery_voltage_goes_below",
+				"lang_tag": "xee_vehicle_battery_voltage_goes_below",
 				"text": "Battery voltage goes below"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -713,7 +713,7 @@
 						"text": "V"
 					},
 					"HumanFriendlyText": {
-						"lang_tag": "hft_xeecar_battery_voltage_goes_below",
+						"lang_tag": "hft_xee_vehicle_battery_voltage_goes_below",
 						"text": "_DEVICE_NAME_ battery voltage goes below _ARGUMENT_VALUE_ V"
 					}
 				}
@@ -723,10 +723,10 @@
 		{
 			"id": 212,
 			"label": {
-				"lang_tag": "xeecar_signal_HeadLightSts",
+				"lang_tag": "xee_vehicle_signal_HeadLightSts",
 				"text": "Headlights status"
 			},
-			"serviceId": "urn:upnp-org:serviceId:XeeCar1",
+			"serviceId": "urn:upnp-org:serviceId:XeeVehicle1",
 			"argumentList": [
 				{
 					"id": 1,
@@ -738,14 +738,14 @@
 						{
 							"Off": "0",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_headlights_are_off",
+								"lang_tag": "xee_vehicle_headlights_are_off",
 								"text": "_DEVICE_NAME_ headlights are off"
 							}
 						},
 						{
 							"On": "1",
 							"HumanFriendlyText": {
-								"lang_tag": "xeecar_headlights_are_on",
+								"lang_tag": "xee_vehicle_headlights_are_on",
 								"text": "_DEVICE_NAME_ headlights are on"
 							}
 						}
@@ -754,5 +754,5 @@
 			]
 		}
 	],
-	"device_type": "urn:schemas-upnp-org:device:XeeCar:1"
+	"device_type": "urn:schemas-upnp-org:device:XeeVehicle:1"
 }

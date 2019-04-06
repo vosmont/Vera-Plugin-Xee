@@ -1,12 +1,13 @@
 --[[
   This file is part of the plugin Xee.
   https://github.com/vosmont/Vera-Plugin-Xee
-  Copyright (c) 2016 Vincent OSMONT
+  Copyright (c) 2019 Vincent OSMONT
   This code is released under the MIT License, see LICENSE.
 --]]
 
 module( "L_Xee1", package.seeall )
 
+-- Load libraries
 local json = require( "dkjson" )
 local https = require( "ssl.https" )
 local ltn12 = require( "ltn12" )
@@ -17,16 +18,12 @@ local Url = require( "socket.url" )
 -- **************************************************
 
 _NAME = "Xee"
-_DESCRIPTION = "Add your cars in your scenes"
-_VERSION = "0.6"
+_DESCRIPTION = "Add your vehicles in your scenes"
+_VERSION = "1.1"
 _AUTHOR = "vosmont"
 
-local XEE_CLIENT_ID = "A7V3mOLy8Qm36nncz6Hy"
-local XEE_AUTH_URL = "https://cloud.xee.com/v3/auth/auth"
---local XEE_AUTH_URL = "https://sandbox.xee.com/v3/auth/auth"
-local XEE_API_URL  = "https://cloud.xee.com/v3"
---local XEE_API_URL  = "https://sandbox.xee.com/v3"
-local XEE_REDIRECT_URI = "https://script.google.com/macros/s/AKfycbwMXbU9MFju3-yq8iCNTLds5UqjejeYj4qyyQfyJb4qh5E19KIP/exec"
+local XEE_API_URL  = "https://api.xee.com/v4"
+local XEE_PROXY_URL = "https://script.google.com/macros/s/AKfycbyAIrB1IFq0GhitEUu1kH_Agy1bUlaX5CDpI7U-XtAVcJeScYLg/exec"
 local MIN_POLL_INTERVAL = 5
 local MIN_POLL_INTERVAL_AFTER_ERROR = 60
 local MIN_POLL_INTERVAL_FAR_AWAY = 700
@@ -47,13 +44,9 @@ local VARIABLE = {
 	-- Communication failure
 	COMM_FAILURE = { "urn:micasaverde-com:serviceId:HaDevice1", "CommFailure", false, "COMM_FAILURE_TIME" },
 	COMM_FAILURE_TIME = { "urn:micasaverde-com:serviceId:HaDevice1", "CommFailureTime", true },
-	-- Xee
+	-- Plugin Xee
 	PLUGIN_VERSION = { "urn:upnp-org:serviceId:Xee1", "PluginVersion", true },
 	DEBUG_MODE = { "urn:upnp-org:serviceId:Xee1", "DebugMode", true },
-	CLIENT_ID = { "urn:upnp-org:serviceId:Xee1", "ClientId", true },
-	CLIENT_SECRET = { "urn:upnp-org:serviceId:Xee1", "ClientSecret", true },
-	IDENTIFIER = { "urn:upnp-org:serviceId:Xee1", "Identifier", true },
-	PASSWORD = { "urn:upnp-org:serviceId:Xee1", "Password", true },
 	ACCESS_TOKEN = { "urn:upnp-org:serviceId:Xee1", "AccessToken", true },
 	REFRESH_TOKEN = { "urn:upnp-org:serviceId:Xee1", "RefreshToken", true },
 	TOKEN_EXPIRATION_DATE = { "urn:upnp-org:serviceId:Xee1", "TokenExpirationDate", true },
@@ -61,43 +54,43 @@ local VARIABLE = {
 	LAST_MESSAGE = { "urn:upnp-org:serviceId:Xee1", "LastMessage", true },
 	LAST_ERROR = { "urn:upnp-org:serviceId:Xee1", "LastError", true },
 	POLL_SETTINGS = { "urn:upnp-org:serviceId:Xee1", "PollSettings", true },
-	-- Xee car
-	CAR_STATUS = { "urn:upnp-org:serviceId:XeeCar1", "Status", true },
-	CAR_NAME = { "urn:upnp-org:serviceId:XeeCar1", "Name", true },
-	CAR_MAKE = { "urn:upnp-org:serviceId:XeeCar1", "Make", true },
-	CAR_MODEL = { "urn:upnp-org:serviceId:XeeCar1", "Model", true },
-	CAR_YEAR = { "urn:upnp-org:serviceId:XeeCar1", "Year", true },
-	CAR_NUMBER_PLATE = { "urn:upnp-org:serviceId:XeeCar1", "NumberPlate", true },
-	CAR_DEVICE_ID = { "urn:upnp-org:serviceId:XeeCar1", "DeviceId", true },
-	CAR_DBID = { "urn:upnp-org:serviceId:XeeCar1", "CardbId", true },
-	CAR_CREATION_DATE = { "urn:upnp-org:serviceId:XeeCar1", "CreationDate", true },
-	CAR_LAST_UPDATE_DATE = { "urn:upnp-org:serviceId:XeeCar1", "LastUpdateDate", true },
-	-- Xee car location
-	CAR_LATITUDE = { "urn:upnp-org:serviceId:Location1", "Latitude", true },
-	CAR_LONGITUDE = { "urn:upnp-org:serviceId:Location1", "Longitude", true },
-	CAR_ALTITUDE = { "urn:upnp-org:serviceId:Location1", "Altitude", true },
-	CAR_HEADING = { "urn:upnp-org:serviceId:Location1", "Heading", true },
-	CAR_LOCATION_DATE = { "urn:upnp-org:serviceId:Location1", "LocationDate", true },
+	FIRST_NAME = { "urn:upnp-org:serviceId:Xee1", "FirstName", true },
+	LAST_NAME = { "urn:upnp-org:serviceId:Xee1", "LastName", true },
+	-- Xee vehicle
+	VEHICLE_STATUS = { "urn:upnp-org:serviceId:XeeVehicle1", "Status", true },
+	VEHICLE_NAME = { "urn:upnp-org:serviceId:XeeVehicle1", "Name", true },
+	VEHICLE_MAKE = { "urn:upnp-org:serviceId:XeeVehicle1", "Make", true },
+	VEHICLE_MODEL = { "urn:upnp-org:serviceId:XeeVehicle1", "Model", true },
+	VEHICLE_YEAR = { "urn:upnp-org:serviceId:XeeVehicle1", "Year", true },
+	VEHICLE_DEVICE_ID = { "urn:upnp-org:serviceId:XeeVehicle1", "DeviceId", true },
+	VEHICLE_CREATION_DATE = { "urn:upnp-org:serviceId:XeeVehicle1", "CreationDate", true },
+	VEHICLE_LAST_UPDATE_DATE = { "urn:upnp-org:serviceId:XeeVehicle1", "LastUpdateDate", true },
+	-- Location
+	LOCATION_LATITUDE = { "urn:upnp-org:serviceId:Location1", "Latitude", true },
+	LOCATION_LONGITUDE = { "urn:upnp-org:serviceId:Location1", "Longitude", true },
+	LOCATION_ALTITUDE = { "urn:upnp-org:serviceId:Location1", "Altitude", true },
+	LOCATION_HEADING = { "urn:upnp-org:serviceId:Location1", "Heading", true },
+	LOCATION_DATE = { "urn:upnp-org:serviceId:Location1", "LocationDate", true },
 	-- Geofence
 	GEOFENCES = { "urn:upnp-org:serviceId:GeoFence1", "Fences", true },
-	CAR_DISTANCE = { "urn:upnp-org:serviceId:GeoFence1", "Distance", true },
-	CAR_DISTANCES = { "urn:upnp-org:serviceId:GeoFence1", "Distances", true },
-	CAR_ZONES_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZonesIn", true },
-	CAR_ZONE_ENTER = { "urn:upnp-org:serviceId:GeoFence1", "ZoneEnter", true },
-	CAR_ZONE_EXIT = { "urn:upnp-org:serviceId:GeoFence1", "ZoneExit", true },
-	CAR_ZONE_IDS_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdsIn", true },
-	CAR_ZONE_ID_ENTER = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdEnter", true },
-	CAR_ZONE_ID_EXIT = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdExit", true },
-	-- Xee car accelerometer
-	CAR_ACCELEROMETER = { "urn:upnp-org:serviceId:XeeCar1", "Accelerometer", true },
-	CAR_ACCELEROMETER_DATE = { "urn:upnp-org:serviceId:XeeCar1", "AccelerometerDate", true }
-	-- Xee car signals (automatic declaration)
+	GEOFENCE_DISTANCE = { "urn:upnp-org:serviceId:GeoFence1", "Distance", true },
+	GEOFENCE_DISTANCES = { "urn:upnp-org:serviceId:GeoFence1", "Distances", true },
+	GEOFENCE_ZONES_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZonesIn", true },
+	GEOFENCE_ZONE_ENTER = { "urn:upnp-org:serviceId:GeoFence1", "ZoneEnter", true },
+	GEOFENCE_ZONE_EXIT = { "urn:upnp-org:serviceId:GeoFence1", "ZoneExit", true },
+	GEOFENCE_ZONE_IDS_IN = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdsIn", true },
+	GEOFENCE_ZONE_ID_ENTER = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdEnter", true },
+	GEOFENCE_ZONE_ID_EXIT = { "urn:upnp-org:serviceId:GeoFence1", "ZoneIdExit", true },
+	-- Xee vehicle accelerometer
+	VEHICLE_ACCELEROMETER = { "urn:upnp-org:serviceId:XeeVehicle1", "Accelerometer", true },
+	VEHICLE_ACCELEROMETER_DATE = { "urn:upnp-org:serviceId:XeeVehicle1", "AccelerometerDate", true }
+	-- Xee vehicle signals (automatic declaration)
 }
 
 -- Device types
 local DEVICE_TYPE = {
-	XEE_CAR = {
-		deviceType = "urn:schemas-upnp-org:device:XeeCar:1", deviceFile = "D_XeeCar1.xml"
+	XEE_VEHICLE = {
+		deviceType = "urn:schemas-upnp-org:device:XeeVehicle:1", deviceFile = "D_XeeVehicle1.xml"
 	}
 }
 local function _getDeviceTypeInfos( deviceType )
@@ -119,7 +112,7 @@ local g_params = {
 	location = {}
 }
 
-local MAP_TEMPLATE = [[
+local MAP_TEMPLATE_GMAP = [[
 <!DOCTYPE html>
 <html>
 <head>
@@ -146,12 +139,100 @@ local MAP_TEMPLATE = [[
 <body onload="XeeMap.initialize()">
 	<div id="map"></div>
 	<div id="legend-zones" class="legend"></div>
-	<div id="legend-cars" class="legend"></div>
+	<div id="legend-vehicles" class="legend"></div>
 </body>
  
 </html>
 ]]
 
+
+-- OpenStreetMap
+local MAP_TEMPLATE = [[
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
+	<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<style type="text/css">
+		html { height: 100% }
+		body { height: 100%; margin: 0px; padding: 0px }
+		#map { height: 100% ; width:100%;}
+		.legend { background: white; margin: 10px; padding: 10px;
+			border: 2px solid #aaa;
+			-webkit-box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px;
+			box-shadow: rgba(0, 0, 0, 0.398438) 0px 2px 4px;
+			min-width: 170px;
+		}
+		.legend-title { font-weight: bold; }
+		.legend-content { margin-top: 5px; }
+		
+		.leaflet-label {
+			background: rgb(235, 235, 235);
+			background: rgba(235, 235, 235, 0.81);
+			background-clip: padding-box;
+			border-color: #777;
+			border-color: rgba(0,0,0,0.25);
+			border-radius: 4px;
+			border-style: solid;
+			border-width: 4px;
+			color: #111;
+			display: block;
+			font: 12px/20px "Helvetica Neue", Arial, Helvetica, sans-serif;
+			font-weight: bold;
+			padding: 1px 6px;
+			position: absolute;
+			-webkit-user-select: none;
+			   -moz-user-select: none;
+				-ms-user-select: none;
+					user-select: none;
+			pointer-events: none;
+			white-space: nowrap;
+			z-index: 6;
+		}
+
+		.leaflet-label.leaflet-clickable {
+			cursor: pointer;
+		}
+
+		.leaflet-label:before,
+		.leaflet-label:after {
+			border-top: 6px solid transparent;
+			border-bottom: 6px solid transparent;
+			content: none;
+			position: absolute;
+			top: 5px;
+		}
+
+		.leaflet-label:before {
+			border-right: 6px solid black;
+			border-right-color: inherit;
+			left: -10px;
+		}
+
+		.leaflet-label:after {
+			border-left: 6px solid black;
+			border-left-color: inherit;
+			right: -10px;
+		}
+
+		.leaflet-label-right:before,
+		.leaflet-label-left:after {
+			content: "";
+		}
+	</style>
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+	<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+	<script src="https://unpkg.com/leaflet-editable@1.2.0/src/Leaflet.Editable.js" integrity="sha384-pTfDiyc6TOMIl5e4Jo3XeZj7HAvuZk7XXeorhQ9YCzfxYhP6q5CVxwcyjvq/G8R8" crossorigin="anonymous"></script>
+	<script type="text/javascript" src="J_Xee1_map.js"></script> 
+</head>
+
+<body onload="XeeMap.initialize( { lat: $latitude, lng: $longitude } )">
+	<div id="map"></div>
+</body>
+
+</html>
+]]
 
 -- **************************************************
 -- Table functions
@@ -172,6 +253,11 @@ end
 -- **************************************************
 -- String functions
 -- **************************************************
+
+-- Returns if a string is empty (nil or "")
+function string_isEmpty( s )
+	return ( ( s == nil ) or ( s == "" ) ) 
+end
 
 -- Pads string to given length with given char from right.
 function string_rpad( s, length, c )
@@ -200,6 +286,16 @@ function string_split( s, sep, convert, convertParam )
 	return t
 end
 
+function string_decodeURI( s )
+	if string_isEmpty( s ) then
+		return ""
+	end
+	local hex={}
+	for i = 0, 255 do
+		hex[ string.format("%0X",i) ] = string.char(i)
+	end
+	return ( s:gsub( '%%(%x%x)', hex ) )
+end
 
 -- **************************************************
 -- Generic utilities
@@ -350,7 +446,6 @@ UI = {
 
 	showError = function( message )
 		debug( "Display message: " .. tostring( message ), "UI.showError" )
-		--message = '<div style="color:red">' .. tostring( message ) .. '</div>'
 		message = '<font color="red">' .. tostring( message ) .. '</font>'
 		Variable.set( g_parentDeviceId, VARIABLE.LAST_ERROR, message )
 	end,
@@ -388,16 +483,16 @@ API = {
 	-- [ { "type": "ERROR_TYPE", "message": "Message on the error", "tip": "How to fix the error" } ]
 	getErrors = function( errors )
 		if ( type( errors ) == "string" ) then
-			local decodeSuccess, jsonErrors = pcall( json.decode, errors )
-			if ( decodeSuccess and jsonErrors ) then
-				errors = jsonErrors
+			local decodeSuccess, errorsFromJson = pcall( json.decode, errors )
+			if ( decodeSuccess and errorsFromJson ) then
+				errors = errorsFromJson
 			else
 				return { { ["type"] = "UNKNOWN_ERROR", message = errors } }
 			end
 		end
 		if ( type( errors ) == "table" ) then
 			if ( errors.error ) then
-				return { { ["type"] = "UNKNOWN_ERROR", message = errors.error } }
+				return { { ["type"] = errors.error, message = errors.error_description or "" } }
 			else
 				return errors
 			end
@@ -408,7 +503,6 @@ API = {
 
 	-- Check if a response has a defined error
 	hasError = function( errors, errorType, errorMessage )
-		--print(json.encode(API.getErrors( errors )))
 		for _, err in ipairs( API.getErrors( errors ) ) do
 			if (
 				( errorType == nil )
@@ -432,8 +526,14 @@ API = {
 		return errorMessage
 	end,
 
+	-- Convert timestamp into Xee time
+	convertTimestampToDate = function( timestamp )
+		local t = os.date( "!*t", timestamp )
+		return string.format( "%04d-%02d-%02dT%02d:%02d:%02dZ", t.year, t.month, t.day, t.hour, t.min, t.sec )
+	end,
+
 	-- Convert Xee time field into a timestamp
-	convertToTimestamp = function( dateString )
+	convertDateToTimestamp = function( dateString )
 		if ( ( dateString == nil ) or ( dateString == "" ) ) then
 			return
 		end
@@ -454,7 +554,7 @@ API = {
 			end
 		end
 		if ( Y == nil ) then
-			error( "Date '" .. dateString .. "' is not valid", "convertToTimestamp" )
+			error( "Date '" .. dateString .. "' is not valid", "convertDateToTimestamp" )
 			return
 		end
 		local timestamp = os.time( {
@@ -473,32 +573,37 @@ API = {
 			end
 			timestamp = timestamp + offset
 		end
-		
 		return timestamp
 	end,
 
 	-- Store given tokens
-	setTokens = function( params )
+	setTokens = function( jsonParams )
 		local newTokenIsSet = false
-		local decodeSuccess, jsonParams = pcall( json.decode, params or "" )
-		if ( decodeSuccess and jsonParams ) then
-			if jsonParams.access_token then
-				g_params.accessToken = jsonParams.access_token
-				Variable.set( g_parentDeviceId, VARIABLE.ACCESS_TOKEN, jsonParams.access_token )
+		local decodeSuccess, params = pcall( json.decode, jsonParams or "" )
+		if ( decodeSuccess and params ) then
+			if params.firstName then
+				Variable.set( g_parentDeviceId, VARIABLE.FIRST_NAME, params.firstName )
+			end
+			if params.lastName then
+				Variable.set( g_parentDeviceId, VARIABLE.LAST_NAME, params.lastName )
+			end
+			if params.access_token then
+				g_params.accessToken = params.access_token
+				Variable.set( g_parentDeviceId, VARIABLE.ACCESS_TOKEN, params.access_token )
 				newTokenIsSet = true
 			end
-			if jsonParams.refresh_token then
-				g_params.refreshToken = jsonParams.refresh_token
-				Variable.set( g_parentDeviceId, VARIABLE.REFRESH_TOKEN, jsonParams.refresh_token )
+			if params.refresh_token then
+				g_params.refreshToken = params.refresh_token
+				Variable.set( g_parentDeviceId, VARIABLE.REFRESH_TOKEN, params.refresh_token )
 			end
-			if jsonParams.expires_at then
-				g_params.tokenExpirationDate = jsonParams.expires_at
-				Variable.set( g_parentDeviceId, VARIABLE.TOKEN_EXPIRATION_DATE, jsonParams.expires_at )
+			if params.expires_in then
+				g_params.tokenExpirationDate = os.time() + ( tonumber(params.expires_in) or 0 )
+				Variable.set( g_parentDeviceId, VARIABLE.TOKEN_EXPIRATION_DATE, g_params.tokenExpirationDate )
 			end
 			if newTokenIsSet then
-				log( "New authorization tokens have been set: " .. tostring( params ), "API.setTokens" )
+				log( "New authorization tokens have been set: " .. tostring( jsonParams ), "API.setTokens" )
 			else
-				error( "No new token in given tokens : " .. tostring( params ), "API.setTokens" )
+				error( "No new token in given tokens : " .. tostring( jsonParams ), "API.setTokens" )
 				return false
 			end
 			return true
@@ -508,128 +613,15 @@ API = {
 		end
 	end,
 
-	-- Just if Identifier and Password are set
-	-- NOT USED
-	getAccessToken = function()
-		if ( ( g_params.identifier == "" ) or ( g_params.password == "" ) ) then
-			error( "Identifier and/or Password is empty", "API.getAccessToken" )
-			return false
-		end
-
-		local b, code, headers
-		local requestBody, responseBody
-		local response
-		local sessionId, token, redirectUri
-
-		-- Get the token in Xee authentification form
-		local src = XEE_AUTH_URL ..
-				"?client_id=" .. XEE_CLIENT_ID ..
-				"&state=" .. Url.escape( tostring( luup.pk_accesspoint ) .. ":" .. tostring( luup.model ) .. ":" .. tostring( luup.version ) )
-		debug( "Call Xee authentification form: " .. src, "API.getAccessToken" )
-		responseBody = {}
-		b, code, headers = https.request( {
-			url = src,
-			method = "GET",
-			sink = ltn12.sink.table( responseBody ),
-			redirect = false
-		})
-		response = table.concat( responseBody or {} )
-		debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken" )
-		--debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.getAccessToken" )
-		if ( ( b == 1 ) and ( code == 200 ) ) then
-			sessionId = headers[ "set-cookie" ]:match( "XEESessionId=([^;]-);" )
-			token = response:match( 'name="login%[_token%]" value="([^"]-)"' )
-			debug( "Response sessionId:\"" .. tostring( sessionId ) .. "\", token:\"" .. tostring( token ) .. "\"", "API.getAccessToken")
-			if ( ( sessionId == nil ) or ( token == nil ) ) then
-				error( "(AUTHENTIFICATION_ERROR) Can not find sessionId or token in Xee authentification form", "API.getAccessToken" )
-				return false
-			end
-		else
-			error( "(AUTHENTIFICATION_ERROR) code:" .. tostring( code ) .. ", response:\"" .. tostring( response ) .. "\"", "API.getAccessToken" )
-			return false
-		end
-
-		-- Submit Xee authentification form
-		requestBody = "login%5Bidentifier%5D=" .. Url.escape( tostring( g_params.identifier ) ) ..
-						"&login%5Bpassword%5D=" .. Url.escape( tostring( g_params.password ) ) ..
-						"&login%5B_token%5D=" .. tostring( token )
-		responseBody = {}
-		b, code, headers = https.request( {
-			url = XEE_AUTH_URL,
-			method = "POST",
-			headers = {
-				["cookie"] = "XEESessionId=" .. sessionId,
-				["content-type"] = "application/x-www-form-urlencoded",
-				["content-length"] = string.len( requestBody )
-			},
-			source = ltn12.source.string( requestBody ),
-			sink = ltn12.sink.table( responseBody ),
-			redirect = false
-		} )
-		response = table.concat( responseBody or {} )
-		debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken")
-		debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.getAccessToken" )
-		if ( ( b == 1 ) and ( code == 302 ) ) then
-			-- Get the REDIRECT_URI (OAuth2)
-			redirectUri = headers[ "location" ]
-			if ( redirectUri == nil ) then
-				error( "(AUTHENTIFICATION_ERROR) Can not find REDIRECT_URI", "API.getAccessToken" )
-				return false
-			end
-		else
-			error( "(AUTHENTIFICATION_ERROR) code:" .. tostring( code ) .. ", response:\"" .. tostring( response ) .. "\"", "API.getAccessToken" )
-			return false
-		end
-
-		-- Call REDIRECT_URI
-		debug( "Call REDIRECT_URI: " .. redirectUri, "API.getAccessToken" )
-		responseBody = {}
-		b, code, headers = https.request( {
-			url = redirectUri,
-			method = "GET",
-			sink = ltn12.sink.table( responseBody ),
-			redirect = false
-		} )
-		debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken" )
-
-		-- Google redirection (have to be done manually because it breaks SSL)
-		if ( ( b == 1 ) and ( code == 302 ) ) then
-			redirectUri = headers[ "location" ]
-			debug( "Call REDIRECT_URI after Google redirection: " .. redirectUri, "API.getAccessToken" )
-			responseBody = {}
-			b, code, headers = https.request( {
-				url = redirectUri,
-				method = "GET",
-				sink = ltn12.sink.table( responseBody ),
-				redirect = false
-			} )
-			debug( "Response headers:" .. json.encode( headers ), "API.getAccessToken" )
-		end
-
-		response = table.concat( responseBody or {} )
-		debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.getAccessToken" )
-		if ( ( b == 1 ) and ( code == 200 ) ) then
-			-- TODO : a bug in Xee ?
-			if ( response == '{"error":"invalid_request"}' ) then
-				error( "(ERROR) " .. response, "API.getAccessToken" )
-				return false
-			end
-			return API.setTokens( response )
-		end
-
-		error( API.errorsToString( response ), "API.getAccessToken" )
-		return false
-	end,
-
 	-- Refresh access token (call third-party google apps script)
 	refreshToken = function()
 		if ( g_params.refreshToken == "" ) then
 			error( "Refresh token is empty", "API.refreshToken" )
 			return false
 		end
-		local src = XEE_REDIRECT_URI ..
+		local src = XEE_PROXY_URL ..
 				"?refreshToken=" .. g_params.refreshToken ..
-				"&state=" .. Url.escape( tostring( luup.pk_accesspoint ) .. ":" .. tostring( luup.model ) .. ":" .. tostring( luup.version ) )
+				"&state=" .. Url.escape( tostring( luup.pk_accesspoint ) .. ":" .. tostring( luup.model or "Not a Vera" ) .. ":" .. tostring( luup.version ) .. ":" .. _VERSION )
 		debug( "Call : " .. src, "API.refreshToken" )
 		local responseBody = {}
 		local b, code, headers = https.request( {
@@ -637,7 +629,7 @@ API = {
 			method = "GET",
 			sink = ltn12.sink.table( responseBody ),
 			redirect = false
-		} )
+		})
 		debug( "Response headers:" .. json.encode( headers ), "API.refreshToken" )
 
 		-- Google redirection (have to be done manually because it breaks SSL)
@@ -650,7 +642,7 @@ API = {
 				method = "GET",
 				sink = ltn12.sink.table( responseBody ),
 				redirect = false
-			} )
+			})
 			debug( "Response headers:" .. json.encode( headers ), "API.refreshToken" )
 		end
 
@@ -672,13 +664,6 @@ API = {
 		local url = XEE_API_URL .. apiPath
 		debug( "Call : " .. url, "API.request" )
 
-		--[[
-		if ( ( g_params.accessToken == "" ) and g_params.identifier and g_params.password ) then
-			-- Try to authentificate directly with Identifier/Password (not recommended)
-			API.getAccessToken()
-		end
-		--]]
-
 		if ( g_params.accessToken == "" ) then
 			error( "Acces token is empty", "API.request" )
 			UI.showError( "Authorization not set" )
@@ -694,20 +679,22 @@ API = {
 			-- Call Xee API (via https)
 			debug( "Use access token:" .. g_params.accessToken, "API.request" )
 			local responseBody = {}
-			local b, code, headers = https.request( {
+			local res, code, headers, status = https.request({
 				url = url,
 				method = "GET",
+				protocol = "tlsv1_2", -- Xee changed recently
+				verify = "none", -- Not really good but the Vera seems to not have the root certificate
 				headers = {
+					["Accept"] = "application/json",
 					["Authorization"] = "Bearer " .. tostring( g_params.accessToken )
 				},
 				sink = ltn12.sink.table( responseBody )
-			} )
-			debug( "Response headers:" .. json.encode( headers ), "API.request" )
+			})
+			--debug( "Response headers:" .. json.encode( headers ), "API.request" )
 
 			response = table.concat( responseBody or {} )
-			--debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ) .. " - response:" .. tostring( response ), "API.request" )
-			debug( "Response b:" .. tostring( b ) .. " - code:" .. tostring( code ), "API.request" )
-			if ( b == 1 ) then
+			debug( "Response: (result:" .. tostring( res ) .. "),(HTTP code:" .. tostring( code ) .. "),(status:" .. tostring( status ) .. ")", "API.request" )
+			if ( res == 1 ) then
 				local decodeSuccess, jsonResponse = pcall( json.decode, response )
 				if not decodeSuccess then
 					error( "(DECODE_ERROR) " .. tostring( jsonResponse ), "API.request" )
@@ -721,10 +708,26 @@ API = {
 						end
 						break
 					elseif ( code == 401 ) then
-						error( API.errorsToString( jsonResponse ), "API.request" )
-						isAuthentificationError = true
+						if ( jsonResponse.error == "token_expired" ) then
+							if not isTokenRefreshed then
+								-- Access token has expired, try to refresh
+								isTokenRefreshed = API.refreshToken()
+								if not isTokenRefreshed then
+									error( API.errorsToString( jsonResponse ) .. " (during refresh of the access token)", "API.request" )
+									isAuthentificationError = true
+								else
+									debug( "Acess token has been refreshed...", "API.request" )
+								end
+							else
+								error( API.errorsToString( jsonResponse ) .. " (after refreshing access token)", "API.request" )
+								isAuthentificationError = true
+							end
+						else
+							error( API.errorsToString( jsonResponse ), "API.request" )
+							isAuthentificationError = true
+						end
 					elseif ( code == 403 ) then
-						if API.hasError( jsonResponse, "AUTHORIZATION_ERROR", "Token has expired" ) then
+						if API.hasError( jsonResponse, "token_expired" ) then
 							if not isTokenRefreshed then
 								-- Access token has expired, try to refresh
 								isTokenRefreshed = API.refreshToken()
@@ -744,6 +747,7 @@ API = {
 						end
 					else
 						error( API.errorsToString( jsonResponse ), "API.request" )
+						break
 					end
 				end
 			else
@@ -774,27 +778,45 @@ API = {
 		return data
 	end,
 
-	-- Get the user ID
-	getUserId = function()
+	-- Get the user infos
+	getUserInfos = function()
 		local data = API.request( "/users/me" )
 		if ( data ~= nil ) then
-			return data.id
+			return data.id, data.firstName, data.lastName
 		else
 			return nil
 		end
 	end,
 
-	-- Get the cars of the user
-	getCars = function()
-		return API.request( "/users/me/cars" )
+	-- Get the vehicles of the user
+	getVehicles = function()
+		return API.request( "/users/me/vehicles" )
 	end,
 
-	-- Get the status of a car
-	getCarStatus = function( carId )
-		return API.request( "/cars/" .. tostring( carId ) .. "/status" )
+	-- Get the status of a vehicle
+	getVehicleStatus = function( vehicleId )
+		return API.request( "/vehicles/" .. tostring( vehicleId ) .. "/status" )
+	end,
+
+	-- Get the signals history of a vehicle
+	getVehicleSignals = function( vehicleId, name )
+		--return API.request( "/vehicles/" .. tostring( vehicleId ) .. "/signals" .. ( name and ( "?name=" .. name ) or "" ) )
+		return API.request( "/vehicles/" .. tostring( vehicleId ) .. "/signals?from=" .. API.convertTimestampToDate( os.time() - 120 ) .. ( name and ( "&signals=" .. name ) or "" ) )
 	end
 }
 
+-- **************************************************
+-- User
+-- **************************************************
+
+User = {
+	-- Synchronise with Xee Cloud
+	sync = function()
+		g_params.userId, g_params.userFirstName, g_params.userLastName = API.getUserInfos()
+		Variable.set( g_parentDeviceId, VARIABLE.FIRST_NAME, g_params.userFirstName or "" )
+		Variable.set( g_parentDeviceId, VARIABLE.LAST_NAME, g_params.userLastName or "" )
+	end
+}
 
 -- **************************************************
 -- Geoloc
@@ -820,7 +842,7 @@ Geoloc = {
 		local distance = math.ceil( ( dx*dx + dy*dy + dz*dz ) ^ 0.5 )
 		--assert (dx*dx+dy*dy+dz*dz >= 0)
 		--assert ((dx*dx+dy*dy+dz*dz)^0.5 >= 0)
-		debug( string.format( "Found a distance of %dm between %s and %s", distance, Geoloc.tostring( p1 ), Geoloc.tostring( p2 ) ), "Geoloc.getDistance" )
+		--debug( string.format( "Found a distance of %dm between %s and %s", distance, Geoloc.tostring( p1 ), Geoloc.tostring( p2 ) ), "Geoloc.getDistance" )
 		return distance
 	end
 }
@@ -880,11 +902,11 @@ Geofences = {
 			return false
 		end
 		local location = {
-			latitude = Variable.get( deviceId, VARIABLE.CAR_LATITUDE ),
-			longitude = Variable.get( deviceId, VARIABLE.CAR_LONGITUDE )
+			latitude = Variable.get( deviceId, VARIABLE.LOCATION_LATITUDE ),
+			longitude = Variable.get( deviceId, VARIABLE.LOCATION_LONGITUDE )
 		}
 		local distances = {}
-		local zoneIdsIn = string_split( ( Variable.getOrInit( deviceId, VARIABLE.CAR_ZONE_IDS_IN, "" ) or "" ) , ";", tonumber )
+		local zoneIdsIn = string_split( ( Variable.getOrInit( deviceId, VARIABLE.GEOFENCE_ZONE_IDS_IN, "" ) or "" ) , ";", tonumber )
 		local zoneIdsEnter, zoneIdsExit = {}, {}
 		local somethingHasChanged = false
 		for zoneId, geofence in ipairs( g_geofences ) do
@@ -909,33 +931,43 @@ Geofences = {
 			end
 			table.insert( distances, { geofence.name, distance } )
 		end
+		
+		debug( "Device #" .. tostring( deviceId ) .. " zoneIdsIn #" .. table.concat( zoneIdsIn, ";" ), "Geofences.update")
+		debug( "Device #" .. tostring( deviceId ) .. " zoneIdsExit #" .. table.concat( zoneIdsExit, ";" ), "Geofences.update")
+		
 		if somethingHasChanged then
 			table.sort( zoneIdsIn )
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_IDS_IN, table.concat( zoneIdsIn, ";" ) )
+			Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_IDS_IN, table.concat( zoneIdsIn, ";" ) )
 			local zonesIn = {}
 			for _, zoneId in ipairs( zoneIdsIn ) do
 				table.insert( zonesIn, g_geofences[zoneId].name )
 			end
-			Variable.set( deviceId, VARIABLE.CAR_ZONES_IN, table.concat( zonesIn, ";" ) )
+			Variable.set( deviceId, VARIABLE.GEOFENCE_ZONES_IN, table.concat( zonesIn, ";" ) )
 
 			if ( #zoneIdsEnter > 0 ) then
 				table.sort( zoneIdsEnter )
-				Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_ENTER, zoneIdsEnter[ 1 ] )
-				Variable.set( deviceId, VARIABLE.CAR_ZONE_ENTER, g_geofences[ zoneIdsEnter[ 1 ] ].name )
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_ID_ENTER, zoneIdsEnter[ 1 ] )
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_ENTER, g_geofences[ zoneIdsEnter[ 1 ] ].name )
+				debug( "Device #" .. tostring( deviceId ) .. " enters zone " .. g_geofences[ zoneIdsEnter[ 1 ] ].name, "Geofences.update")
+			else
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_ID_ENTER, "" )
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_ENTER, "" )
 			end
 
 			if ( #zoneIdsExit > 0 ) then
 				table.sort( zoneIdsExit )
-				Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_EXIT, zoneIdsExit[ 1 ] )
-				Variable.set( deviceId, VARIABLE.CAR_ZONE_EXIT, g_geofences[ zoneIdsExit[ 1 ] ].name )
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_ID_EXIT, zoneIdsExit[ 1 ] )
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_EXIT, g_geofences[ zoneIdsExit[ 1 ] ].name )
+				debug( "Device #" .. tostring( deviceId ) .. " exists zone " .. g_geofences[ zoneIdsExit[ 1 ] ].name, "Geofences.update")
+			else
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_ID_EXIT, "" )
+				Variable.set( deviceId, VARIABLE.GEOFENCE_ZONE_EXIT, "" )
 			end
 
 			-- Pulse
-			luup.sleep( 200 )
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_ENTER, "" )
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_ENTER, "" )
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_ID_EXIT, "" )
-			Variable.set( deviceId, VARIABLE.CAR_ZONE_EXIT, "" )
+			--luup.sleep( 200 )
+			
+			
 		end
 
 		-- Update distances
@@ -951,9 +983,9 @@ Geofences = {
 			end
 			strDistances = strDistances .. table.concat( distance , ";" )
 		end
-		Variable.set( deviceId, VARIABLE.CAR_DISTANCES, strDistances )
+		Variable.set( deviceId, VARIABLE.GEOFENCE_DISTANCES, strDistances )
 		-- Get the distance of the main zone (first)
-		Variable.set( deviceId, VARIABLE.CAR_DISTANCE, distances[1][2] )
+		Variable.set( deviceId, VARIABLE.GEOFENCE_DISTANCE, distances[1][2] )
 	end,
 
 	getDistances = function( location )
@@ -978,183 +1010,186 @@ Geofences = {
 
 
 -- **************************************************
--- Cars
+-- Vehicles
 -- **************************************************
 
-local g_cars = {}  -- The list of all our child devices
-local g_indexCars = {}
+local g_vehicles = {}  -- The list of all our child devices
+local g_indexVehicles = {}
 
-Cars = {
+Vehicles = {
 	-- Synchronise with Xee Cloud
 	sync = function()
-		debug( "Sync cars", "Cars.sync" )
+		debug( "Sync vehicles", "Vehicles.sync" )
 
-		local cars = API.getCars()
-		if ( type( cars ) ~= "table" ) then
+		local vehicles = API.getVehicles()
+		if ( type( vehicles ) ~= "table" ) then
 			return false
 		end
 
-		-- Retrieve already created cars
-		local knownCars = {}
+		-- Retrieve already created vehicles
+		local knownVehicles = {}
 		for deviceId, device in pairs( luup.devices ) do
 			if ( device.device_num_parent == g_parentDeviceId ) then
-				knownCars[ tostring( device.id ) ] = true
+				knownVehicles[ tostring( device.id ) ] = true
 			end
 		end
 
 		-- http://wiki.micasaverde.com/index.php/Luup_Lua_extensions#Module:_luup.chdev
 		local ptr = luup.chdev.start( g_parentDeviceId )
 
-		for _, car in ipairs( cars ) do
-			local carId = tostring( car.id )
-			if ( knownCars[ carId ] ) then
-				-- Already known car - Keep it
-				debug( "Keep car #" .. carId, "Cars.sync" )
-				luup.chdev.append( g_parentDeviceId, ptr, carId, "", "", "", "", "", false )
+		for _, vehicle in ipairs( vehicles ) do
+			local vehicleId = tostring( vehicle.id )
+			if ( knownVehicles[ vehicleId ] ) then
+				-- Already known vehicle - Keep it
+				debug( "Keep vehicle #" .. vehicleId, "Vehicles.sync" )
+				luup.chdev.append( g_parentDeviceId, ptr, vehicleId, "", "", "", "", "", false )
 			else
-				debug( "Add car #" .. carId .. " - " .. json.encode( car ), "Cars.sync" )
+				debug( "Add vehicle #" .. vehicleId .. " - " .. json.encode( vehicle ), "Vehicles.sync" )
 				local parameters = ""
 				for _, param in ipairs( {
 					{ "COMM_FAILURE", "0" },
 					{ "COMM_FAILURE_TIME", "0" },
-					{ "CAR_STATUS", "1" },
-					{ "CAR_NAME", car.name },
-					{ "CAR_MAKE", car.make },
-					{ "CAR_MODEL", car.model },
-					{ "CAR_YEAR", car.year },
-					{ "CAR_NUMBER_PLATE", car.numberPlate },
-					{ "CAR_DEVICE_ID", car.deviceId },
-					{ "CAR_DBID", car.cardbId },
-					{ "CAR_CREATION_DATE", API.convertToTimestamp( car.creationDate ) },
-					{ "CAR_LAST_UPDATE_DATE", API.convertToTimestamp( car.lastUpdateDate ) }
+					{ "VEHICLE_STATUS", "1" },
+					{ "VEHICLE_NAME", vehicle.name },
+					{ "VEHICLE_MAKE", vehicle.make },
+					{ "VEHICLE_MODEL", vehicle.model },
+					{ "VEHICLE_DEVICE_ID", vehicle.device.id },
+					{ "VEHICLE_CREATION_DATE", API.convertDateToTimestamp( vehicle.createdAt ) },
+					{ "VEHICLE_LAST_UPDATE_DATE", API.convertDateToTimestamp( vehicle.updatedAt ) }
 				} ) do
 					parameters = parameters .. VARIABLE[param[1]][1] .. "," .. VARIABLE[param[1]][2] .. "=" .. tostring( param[2] or "" ) .. "\n"
 				end
 				luup.chdev.append(
-					g_parentDeviceId, ptr, carId,
-					car.name, "", DEVICE_TYPE.XEE_CAR.deviceFile, "",
+					g_parentDeviceId, ptr, vehicleId,
+					vehicle.name, "", DEVICE_TYPE.XEE_VEHICLE.deviceFile, "",
 					parameters,
 					false
 				)
 			end
 		end
 
-		debug( "Start sync", "Cars.sync" )
+		debug( "Start sync", "Vehicles.sync" )
 		Variable.set( g_parentDeviceId, VARIABLE.LAST_UPDATE_DATE, os.time() )
 		luup.chdev.sync( g_parentDeviceId, ptr )
-		debug( "End sync", "Cars.sync" )
+		debug( "End sync", "Vehicles.sync" )
 
 		return true
 	end,
 
-	-- Get a list with all our car devices.
+	-- Get a list with all our vehicle devices.
 	retrieve = function()
-		g_cars = {}
-		g_indexCars = {}
+		g_vehicles = {}
+		g_indexVehicles = {}
 		for deviceId, device in pairs( luup.devices ) do
 			if ( device.device_num_parent == g_parentDeviceId ) then
-				local carId = tostring( device.id or "" )
-				if ( carId == "" ) then
-					debug( "Found child device #".. tostring( deviceId ) .."(".. device.description .."), but carId '" .. tostring( device.id ) .. "' is empty", "Cars.retrieve" )
+				local vehicleId = tostring( device.id or "" )
+				if ( vehicleId == "" ) then
+					debug( "Found child device #".. tostring( deviceId ) .."(".. device.description .."), but vehicleId '" .. tostring( device.id ) .. "' is empty", "Vehicles.retrieve" )
 				else
-					local car = g_indexCars[ carId ]
-					if ( car == nil ) then
-						car = {
-							id = tonumber( carId ),
+					local vehicle = g_indexVehicles[ vehicleId ]
+					if ( vehicle == nil ) then
+						vehicle = {
+							id = vehicleId,
 							name = device.description,
 							deviceId = deviceId,
 							status = {},
 							lastUpdate = 0,
 							nextPollDate = 0
 						}
-						table.insert( g_cars, car )
-						g_indexCars[ carId ] = car
-						debug( "Found car #".. carId .."(".. device.description ..")", "Cars.retrieve" )
+						table.insert( g_vehicles, vehicle )
+						g_indexVehicles[ vehicleId ] = vehicle
+						debug( "Found vehicle #".. vehicleId .."(".. device.description ..")", "Vehicles.retrieve" )
 					else
-						warning( "Found car #".. carId .. "(".. device.description ..") but it was already registered", "Cars.retrieve" )
+						warning( "Found vehicle #".. vehicleId .. "(".. device.description ..") but it was already registered", "Vehicles.retrieve" )
 					end
 				end
 			end
 		end
-		if ( #g_cars == 0 ) then
-			UI.show( "No car" )
-		elseif ( #g_cars == 1 ) then
-			UI.show( "1 car" )
+		if ( #g_vehicles == 0 ) then
+			UI.show( "No vehicle" )
+		elseif ( #g_vehicles == 1 ) then
+			UI.show( "1 vehicle" )
 		else
-			UI.show( tostring( #g_cars ) .. " cars"  )
+			UI.show( tostring( #g_vehicles ) .. " vehicles"  )
 		end
-		log( "Cars: " .. tostring( #g_cars ), "Cars.retrieve" )
+		log( "Vehicles: " .. tostring( #g_vehicles ), "Vehicles.retrieve" )
 	end,
 
-	-- Update the informations and signals of a car
-	update = function( carId )
-		local carId = tostring( carId )
-		local car = g_indexCars[ carId ]
-		if ( car == nil ) then
-			warning( "Car #" .. carId .. " is unknown", "Cars.update" )
+	-- Update the informations and signals of a vehicle
+	update = function( vehicleId )
+		local vehicleId = tostring( vehicleId )
+		local vehicle = g_indexVehicles[ vehicleId ]
+		if ( vehicle == nil ) then
+			warning( "Vehicle #" .. vehicleId .. " is unknown", "Vehicles.update" )
 			return false
 		end
-		debug( "Update car #" .. carId .. "(" .. car.name .. ")", "Cars.update" )
-		local carStatus = API.getCarStatus( carId )
-		if ( carStatus ~= nil ) then
+		debug( "Update vehicle #" .. vehicleId .. "(" .. vehicle.name .. ")", "Vehicles.update" )
+		local vehicleStatus = API.getVehicleStatus( vehicleId )
+		if ( vehicleStatus ~= nil ) then
 
 			-- Location
-			if ( carStatus.location ) then
-				Variable.set( car.deviceId, VARIABLE.CAR_LATITUDE, carStatus.location.latitude )
-				Variable.set( car.deviceId, VARIABLE.CAR_LONGITUDE, carStatus.location.longitude )
-				Variable.set( car.deviceId, VARIABLE.CAR_ALTITUDE, carStatus.location.altitude )
-				Variable.set( car.deviceId, VARIABLE.CAR_HEADING, carStatus.location.heading )
-				Variable.set( car.deviceId, VARIABLE.CAR_LOCATION_DATE, API.convertToTimestamp( carStatus.location.date ) )
+			if ( vehicleStatus.location ) then
+				Variable.set( vehicle.deviceId, VARIABLE.LOCATION_LATITUDE, vehicleStatus.location.latitude )
+				Variable.set( vehicle.deviceId, VARIABLE.LOCATION_LONGITUDE, vehicleStatus.location.longitude )
+				Variable.set( vehicle.deviceId, VARIABLE.LOCATION_ALTITUDE, vehicleStatus.location.altitude )
+				Variable.set( vehicle.deviceId, VARIABLE.LOCATION_HEADING, vehicleStatus.location.heading )
+				Variable.set( vehicle.deviceId, VARIABLE.LOCATION_DATE, API.convertDateToTimestamp( vehicleStatus.location.date ) )
 			end
 
 			-- TODO : accelerometer ?
 
 			-- Signals
-			if ( carStatus.signals ) then
+			if ( vehicleStatus.signals ) then
 				local lastUpdate = tonumber(( Variable.get( g_parentDeviceId, VARIABLE.LAST_UPDATE_DATE ) )) or 0
-				for _, signal in ipairs( carStatus.signals ) do
+				for _, signal in ipairs( vehicleStatus.signals ) do
 					local variableName = "Signal" .. tostring( signal.name )
-					local formerValue = luup.variable_get( "urn:upnp-org:serviceId:XeeCar1", variableName, car.deviceId ) or ""
-					local formerValueDate = luup.variable_get( "urn:upnp-org:serviceId:XeeCar1", variableName .. "Date", car.deviceId )
-					local timestamp = API.convertToTimestamp( signal.date ) or 0
+					local formerValue = luup.variable_get( "urn:upnp-org:serviceId:XeeVehicle1", variableName, vehicle.deviceId ) or ""
+					local formerValueDate = luup.variable_get( "urn:upnp-org:serviceId:XeeVehicle1", variableName .. "Date", vehicle.deviceId )
+					local timestamp = API.convertDateToTimestamp( signal.date ) or 0
 					local hasValueChanged, hasDateChanged = ( formerValue ~= tostring( signal.value ) ), ( formerValueDate ~= tostring( timestamp ) )
 					local hasToPulse = false
 					if ( hasValueChanged or hasDateChanged ) then
 						if ( ( timestamp > lastUpdate ) and string.match( signal.name, ".*Sts$" ) and not hasValueChanged and ( formerValue == "0" ) ) then
-							-- Status signal has changed during two poll (take change only after a sync)
+							-- Status signal has changed during two poll
 							hasValueChanged = true
 							signal.value = "1"
 							hasToPulse = true
 						end
+						if ( ( signal.name == "HeadLightSts" ) and hasValueChanged and ( tostring(signal.value) == "1" ) ) then
+							-- Check if it is headlight flash
+							debug( json.encode(API.getVehicleSignals( vehicleId, "HeadLightSts" )), "Vehicles.update" )
+							--debug( json.encode(API.getVehicleSignals( vehicleId )), "Vehicles.update" )
+
+						end
 						if hasValueChanged then
-							luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName, signal.value, car.deviceId )
+							luup.variable_set( "urn:upnp-org:serviceId:XeeVehicle1", variableName, signal.value, vehicle.deviceId )
 						end
 						if hasDateChanged then
-							luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName .. "Date", timestamp, car.deviceId )
+							luup.variable_set( "urn:upnp-org:serviceId:XeeVehicle1", variableName .. "Date", timestamp, vehicle.deviceId )
 						end
 						if hasToPulse then
-							debug( "Pulse signal " ..  signal.name .. " for car #" .. carId, "Cars.update" )
-							luup.variable_set( "urn:upnp-org:serviceId:XeeCar1", variableName, "0", car.deviceId )
+							debug( "Pulse signal " ..  signal.name .. " for vehicle #" .. vehicleId, "Vehicles.update" )
+							luup.variable_set( "urn:upnp-org:serviceId:XeeVehicle1", variableName, "0", vehicle.deviceId )
 						end
 					end
 				end
 			end
 
 			-- Geofences
-			if ( carStatus.location ) then
-				Geofences.update( car.deviceId )
-				carStatus.zonesIn = Variable.get( car.deviceId, VARIABLE.CAR_ZONES_IN )
+			if ( vehicleStatus.location ) then
+				Geofences.update( vehicle.deviceId )
+				vehicleStatus.zonesIn = Variable.get( vehicle.deviceId, VARIABLE.GEOFENCE_ZONES_IN )
 			end
 
-			car.lastUpdate = os.time()
-			Variable.set( car.deviceId, VARIABLE.CAR_LAST_UPDATE_DATE, car.lastUpdate )
-			Variable.set( car.deviceId, VARIABLE.COMM_FAILURE, "0" )
-			car.status = carStatus
+			vehicle.lastUpdate = os.time()
+			Variable.set( vehicle.deviceId, VARIABLE.VEHICLE_LAST_UPDATE_DATE, vehicle.lastUpdate )
+			Variable.set( vehicle.deviceId, VARIABLE.COMM_FAILURE, "0" )
+			vehicle.status = vehicleStatus
 			return true
 		else
-			error( "Can not retrieve car #" .. carId .. "(" .. tostring( car.name ) .. ") status", "Cars.update" )
-			Variable.set( car.deviceId, VARIABLE.COMM_FAILURE, "1" )
-			car.status = {}
+			error( "Can not retrieve vehicle #" .. vehicleId .. "(" .. tostring( vehicle.name ) .. ") status", "Vehicles.update" )
+			Variable.set( vehicle.deviceId, VARIABLE.COMM_FAILURE, "1" )
+			vehicle.status = {}
 			return false
 		end
 	end
@@ -1171,15 +1206,15 @@ PollEngine = {
 
 		local pollInterval = g_params.pollSettings[ 1 ]
 
-		if ( ( #g_cars > 0 ) and not ( luup.attr_get( "disabled", g_parentDeviceId ) == 1 ) ) then
-			table.sort( g_cars, function( car1, car2 )
-				return car1.nextPollDate < car2.nextPollDate
+		if ( ( #g_vehicles > 0 ) and not ( luup.attr_get( "disabled", g_parentDeviceId ) == 1 ) ) then
+			table.sort( g_vehicles, function( vehicle1, vehicle2 )
+				return vehicle1.nextPollDate < vehicle2.nextPollDate
 			end )
 
-			-- Poll the car that need to be polled first
-			if ( os.difftime( g_cars[ 1 ].nextPollDate, os.time() ) <= 0 ) then
-				if Cars.update( g_cars[ 1 ].id ) then
-					--if ( g_cars[ 1 ].distance > XEE_ ) then
+			-- Poll the vehicle that need to be polled first
+			if ( os.difftime( g_vehicles[ 1 ].nextPollDate, os.time() ) <= 0 ) then
+				if Vehicles.update( g_vehicles[ 1 ].id ) then
+					--if ( g_vehicles[ 1 ].distance > XEE_ ) then
 					--else
 						pollInterval = g_params.pollSettings[ 1 ]
 					--end
@@ -1187,11 +1222,11 @@ PollEngine = {
 					-- Use the poll interval defined for errors
 					pollInterval = g_params.pollSettings[ 2 ]
 				end
-				g_cars[ 1 ].nextPollDate = os.time() + pollInterval
+				g_vehicles[ 1 ].nextPollDate = os.time() + pollInterval
 			end
 
-			if ( #g_cars > 1 ) then
-				pollInterval = os.difftime( math.min( g_cars[ 1 ].nextPollDate, g_cars[ 2 ].nextPollDate ), os.time() )
+			if ( #g_vehicles > 1 ) then
+				pollInterval = os.difftime( math.min( g_vehicles[ 1 ].nextPollDate, g_vehicles[ 2 ].nextPollDate ), os.time() )
 				if ( pollInterval < MIN_INTERVAL_BETWEEN_REQUESTS ) then
 					pollInterval = MIN_INTERVAL_BETWEEN_REQUESTS
 				end
@@ -1201,7 +1236,6 @@ PollEngine = {
 		debug( "Next poll in " .. tostring( pollInterval ) .. " seconds", "PollEngine.poll" )
 		luup.call_delay( "Xee.PollEngine.poll", pollInterval )
 	end
-
 }
 
 
@@ -1214,19 +1248,19 @@ local _handlerCommands = {
 		return "Unknown command '" .. tostring( params["command"] ) .. "'", "text/plain"
 	end,
 
-	["getCars"] = function( params, outputFormat )
-		return tostring( json.encode( g_cars ) ), "application/json"
+	["getVehicles"] = function( params, outputFormat )
+		return tostring( json.encode( g_vehicles ) ), "application/json"
 	end,
 
 	-- DEBUG
-	["setCarLocation"] = function( params, outputFormat )
-		local car = g_indexCars[ tostring( params["carId"] ) ]
-		car.status.location.latitude = tonumber( params["latitude"] )
-		Variable.set( car.deviceId, VARIABLE.CAR_LATITUDE, car.status.location.latitude )
-		car.status.location.longitude = tonumber( params["longitude"] )
-		Variable.set( car.deviceId, VARIABLE.CAR_LONGITUDE, car.status.location.longitude )
-		Geofences.update( car.deviceId )
-		car.status.zonesIn = Variable.get( car.deviceId, VARIABLE.CAR_ZONES_IN )
+	["setVehicleLocation"] = function( params, outputFormat )
+		local vehicle = g_indexVehicles[ tostring( params["vehicleId"] ) ]
+		vehicle.status.location.latitude = tonumber( params["latitude"] )
+		Variable.set( vehicle.deviceId, VARIABLE.LOCATION_LATITUDE, vehicle.status.location.latitude )
+		vehicle.status.location.longitude = tonumber( params["longitude"] )
+		Variable.set( vehicle.deviceId, VARIABLE.LOCATION_LONGITUDE, vehicle.status.location.longitude )
+		Geofences.update( vehicle.deviceId )
+		vehicle.status.zonesIn = Variable.get( vehicle.deviceId, VARIABLE.GEOFENCE_ZONES_IN )
 		return tostring( json.encode( { result = true } ) ), "application/json"
 	end,
 
@@ -1244,19 +1278,37 @@ local _handlerCommands = {
 			isOk, strError = false, "JSON error: " .. tostring( jsonError )
 		end
 		if isOk then
-			for _, car in ipairs( g_cars ) do
-				car.status.zonesIn = ""
+			for _, vehicle in ipairs( g_vehicles ) do
+				vehicle.status.zonesIn = ""
 			end
 		end
 		return tostring( json.encode( { result = isOk, ["error"] = strError } ) ), "application/json"
 	end,
 
 	["getMap"] = function( params, outputFormat )
-		return tostring( MAP_TEMPLATE ), "text/html"
+		local template = tostring( MAP_TEMPLATE )
+		template = string.gsub( template, "%$latitude", tostring(luup.latitude) )
+		template = string.gsub( template, "%$longitude", tostring(luup.longitude) )
+		return template, "text/html"
 	end,
 
 	["getErrors"] = function( params, outputFormat )
 		return tostring( json.encode( g_errors ) ), "application/json"
+	end,
+
+	["setTokens"] = function( params, outputFormat )
+		if params.result then
+			local result = string_decodeURI( params.result )
+			local strError = API.errorsToString( result )
+			if not string_isEmpty( strError ) then
+				return "There's a problem:<br/>" .. strError, "text/html"
+			else
+				API.setTokens( result )
+				return "The authorization tokens have been saved in your Home Automation System.<br/>They will be used at the next automatic refresh, or you can force the refresh by clicking on the button \"Sync\" in the \"Vehicles\" tab.<br/><br/>You can close this window.", "text/html"
+			end
+		else
+			return "Nothing has been done. You can close this window.", "text/html"
+		end
 	end
 }
 setmetatable( _handlerCommands,{
@@ -1279,13 +1331,13 @@ end
 
 function setTokens( params )
 	if API.setTokens( params ) then
-		g_params.userId = API.getUserId()
+		User.sync()
 	end
 end
 
 function sync()
-	Cars.sync()
-	Cars.retrieve()
+	Vehicles.sync()
+	Vehicles.retrieve()
 end
 
 
@@ -1310,9 +1362,9 @@ local function _initPluginInstance()
 	Variable.set( g_parentDeviceId, VARIABLE.PLUGIN_VERSION, _VERSION )
 	Variable.set( g_parentDeviceId, VARIABLE.LAST_MESSAGE, "" )
 	Variable.set( g_parentDeviceId, VARIABLE.LAST_ERROR, "" )
+	Variable.getOrInit( g_parentDeviceId, VARIABLE.FIRST_NAME, "" )
+	Variable.getOrInit( g_parentDeviceId, VARIABLE.LAST_NAME, "" )
 	-- Get plugin params
-	--g_params.identifier = Variable.getOrInit( g_parentDeviceId, VARIABLE.IDENTIFIER, "" )
-	--g_params.password = Variable.getOrInit( g_parentDeviceId, VARIABLE.PASSWORD, "" )
 	g_params.accessToken = Variable.getOrInit( g_parentDeviceId, VARIABLE.ACCESS_TOKEN, "" )
 	g_params.refreshToken = Variable.getOrInit( g_parentDeviceId, VARIABLE.REFRESH_TOKEN, "" )
 	g_params.tokenExpirationDate = Variable.getOrInit( g_parentDeviceId, VARIABLE.TOKEN_EXPIRATION_DATE, "" )
@@ -1359,9 +1411,9 @@ local function _registerWithALTUI()
 					"urn:upnp-org:serviceId:altui1",
 					"RegisterPlugin",
 					{
-						newDeviceType = "urn:schemas-upnp-org:device:XeeCar:1",
+						newDeviceType = "urn:schemas-upnp-org:device:XeeVehicle:1",
 						newScriptFile = "J_Xee1.js",
-						newDeviceDrawFunc = "Xee.ALTUI_drawXeeCarDevice"
+						newDeviceDrawFunc = "Xee.ALTUI_drawXeeVehicleDevice"
 					},
 					deviceId
 				)
@@ -1375,9 +1427,10 @@ local function _registerWithALTUI()
 end
 
 local function _deferredStartup()
-	-- Sync the cars with Xee cloud
-	local result = Cars.sync()
-	Cars.retrieve()
+	-- Sync with Xee cloud
+	User.sync()
+	local result = Vehicles.sync()
+	Vehicles.retrieve()
 
 	if result then
 		PollEngine.poll()
@@ -1404,8 +1457,6 @@ function startup( lul_device )
 	_initPluginInstance()
 	-- Watch setting changes
 	Variable.watch( g_parentDeviceId, VARIABLE.DEBUG_MODE, "Xee.initPluginInstance" )
-	--Variable.watch( g_parentDeviceId, VARIABLE.IDENTIFIER, "Xee.initPluginInstance" )
-	--Variable.watch( g_parentDeviceId, VARIABLE.PASSWORD, "Xee.initPluginInstance" )
 	Variable.watch( g_parentDeviceId, VARIABLE.POLL_SETTINGS, "Xee.initPluginInstance" )
 	-- Handlers
 	luup.register_handler( "Xee.handleCommand", "Xee" )

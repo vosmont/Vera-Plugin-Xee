@@ -3,23 +3,32 @@
 /**
  * This file is part of the plugin Xee.
  * https://github.com/vosmont/Vera-Plugin-Xee
- * Copyright (c) 2016 Vincent OSMONT
+ * Copyright (c) 2019 Vincent OSMONT
  * This code is released under the MIT License, see LICENSE.
  */
 
 
 ( function( $ ) {
 	// UI7 fix
-	Utils.getDataRequestURL = function() {
+	Utils.getFullDataRequestURL = function() {
 		var dataRequestURL = api.getDataRequestURL();
+		if ( dataRequestURL.indexOf( "http" ) === -1 ) {
+			var protocol = document.location.protocol;
+			var host = document.location.hostname;
+			var httpPort = document.location.port;
+			var topUrl = protocol + '//' + host + ( ( httpPort != 80 && httpPort != '' ) ? ':' + httpPort : '' );
+			dataRequestURL = topUrl + dataRequestURL;
+		}
+		/*
 		if ( dataRequestURL.indexOf( "?" ) === -1 ) {
 			dataRequestURL += "?";
 		}
+		*/
 		return dataRequestURL;
 	};
 	// Custom CSS injection
 	Utils.injectCustomCSS = function( nameSpace, css ) {
-		if ( $( "#custom-css-" + nameSpace ).size() === 0 ) {
+		if ( $( "#custom-css-" + nameSpace ).length === 0 ) {
 			Utils.logDebug( "Injects custom CSS for " + nameSpace );
 			var pluginStyle = $( '<style id="custom-css-' + nameSpace + '">' );
 			pluginStyle
@@ -29,6 +38,48 @@
 			Utils.logDebug( "Injection of custom CSS has already been done for " + nameSpace );
 		}
 	};
+	Utils.performActionOnDevice = function( deviceId, service, action, actionArguments ) {
+		var d = $.Deferred();
+		try {
+			if ( $.isPlainObject( actionArguments ) ) {
+				$.each( actionArguments, function( key, value ) {
+					if ( !value ) {
+						delete actionArguments[ key ];
+					}
+				});
+			}
+			api.performActionOnDevice( deviceId, service, action, {
+				actionArguments: actionArguments,
+				onSuccess: function( response ) {
+					var result;
+					try {
+						result = JSON.parse( response.responseText );
+					} catch( err ) {
+					}
+					if ( !$.isPlainObject( result )
+						|| !$.isPlainObject( result[ "u:" + action + "Response" ] )
+						|| (
+							( result[ "u:" + action + "Response" ].OK !== "OK" )
+							&& ( result[ "u:" + action + "Response" ].JobID === undefined )
+						)
+					) {
+						Utils.logError( "[Utils.performActionOnDevice] ERROR on action '" + action + "': " + response.responseText );
+						d.reject();
+					} else {
+						d.resolve();
+					}
+				},
+				onFailure: function( response ) {
+					Utils.logError( "[Utils.performActionOnDevice] ERROR(" + response.status + "): " + response.responseText );
+					d.reject();
+				}
+			} );
+		} catch( err ) {
+			Utils.logError( "[Utils.performActionOnDevice] ERROR: " + JSON.parse( err ) );
+			d.reject();
+		}
+		return d.promise();
+	};
 } ) ( jQuery );
 
 
@@ -36,12 +87,12 @@ var Xee = ( function( api, $ ) {
 	var _uuid = "fba503c3-b3f9-478e-a99e-26fa25cbba68";
 	var XEE_SID = "urn:upnp-org:serviceId:Xee1";
 	var XEE_DID = "urn:schemas-upnp-org:device:Xee:1";
-	var XEE_CAR_SID = "urn:upnp-org:serviceId:XeeCar1";
-	var XEE_CAR_DID = "urn:schemas-upnp-org:device:XeeCar:1";
-	var CLIENT_ID = "A7V3mOLy8Qm36nncz6Hy";
-	var AUTH_URL = "https://cloud.xee.com/v3/auth/auth";
-	var SCOPE = [ "users_read", "cars_read", "signals_read", "locations_read", "status_read" ];
-	var REDIRECT_URI = "https://script.google.com/macros/s/AKfycbwMXbU9MFju3-yq8iCNTLds5UqjejeYj4qyyQfyJb4qh5E19KIP/exec";
+	var XEE_VEHICLE_SID = "urn:upnp-org:serviceId:XeeVehicle1";
+	var XEE_VEHICLE_DID = "urn:schemas-upnp-org:device:XeeVehicle:1";
+	var XEE_CLIENT_ID = "72b109c6eafcf052e2fba8155656c4d6";
+	var XEE_AUTH_URL = "https://api.xee.com/v4/oauth/authorize";
+	var XEE_SCOPE = [ "account.read", "vehicles.read", "vehicles.locations.read", "vehicles.signals.read" ];
+	var REDIRECT_URI = "https://script.google.com/macros/s/AKfycbyAIrB1IFq0GhitEUu1kH_Agy1bUlaX5CDpI7U-XtAVcJeScYLg/exec";
 	var _deviceId = null;
 	var _registerIsDone = false;
 	var _lastUpdate = 0;
@@ -57,8 +108,8 @@ As Oauth2 protocol is not implemented in the Vera, the plugin uses a third-part 
 - Calls to that webservice are recorded, but your privacy is respected (see sources).",
 		"AuthorizationSaved": "\
 The authorization tokens have been saved.<br/>\
-They will be used at the next automatic refresh, or you can force the refresh by clicking on the button \"Sync\" in the \"Cars\" tab.",
-		"ExplanationSyncingCars": "\
+They will be used at the next automatic refresh, or you can force the refresh by clicking on the button \"Sync\" in the \"Vehicles\" tab.",
+		"ExplanationSyncingVehicles": "\
 The list of the vehicules bound to your Xee account is refreshed :<br/>\
 - At each restart of the luup engine.<br/>\
 - When you press the button \"Sync\".<br/>\
@@ -68,14 +119,14 @@ Signals and position of each vehicule are periodically updated. This refresh int
 - If an error has been raised during the last update.<br/>\
 - Distance from your home (TODO).<br/>\
 ",
-		"SyncingCars": "\
-Cars have been synchronized with your Xee account...<br/>\
+		"SyncingVehicles": "\
+Vehicles have been synchronized with your Xee account...<br/>\
 ... wait until the reload of Luup engine",
 		"ExplanationMap": "\
-This map shows your cars and the geofences.<br/>\
+This map shows your vehicles and the geofences.<br/>\
 You can add/delete/move the geofences.",
-		"NoCar": "\
-There's no car bound to your Xee account.",
+		"NoVehicle": "\
+There's no vehicle bound to your Xee account.",
 		"NoError": "\
 There's no error."
 	};
@@ -145,180 +196,160 @@ There's no error."
 	/**
 	 * Show authentification tab
 	 */
-	function _showAuthentification_new( deviceId ) {
-		_deviceId = deviceId;
-		try {
-			api.setCpanelContent(
-					'<div class="xee-panel">'
-				+		'<div class="xee-explanation">'
-				+			_T( "Set variables 'Identifier' and 'Password' with your Xee account" )
-				+		'</div>'
-				+	'</div>'
-			);
-		} catch (err) {
-			Utils.logError('Error in Xee.showAuthentification(): ' + err);
-		}
-	}
 	function _login() {
 		var userData = api.getUserData();
-		var url = AUTH_URL
-			+ "?client_id=" + CLIENT_ID
-			//+ "&scope=" + encodeURIComponent( SCOPE.join( " " ) )
-			//+ "&redirect_uri=" + encodeURIComponent( REDIRECT_URI )
-			//+ "&state=AUTO:" + encodeURIComponent( userData.PK_AccessPoint + ":" + userData.model + ":" + userData.BuildVersion );
-			+ "&state=" + encodeURIComponent( userData.PK_AccessPoint + ":" + userData.model + ":" + userData.BuildVersion );
-		var win = window.open( url, "windowname1", "width=460, height=630" ); 
-
-		/*
-		var pollTimer = window.setInterval( function() { 
-			try {
-				win.postMessage("test", REDIRECT_URI);
-				console.log( win.document.URL );
-				if ( win.document.URL.indexOf( REDIRECT_URI ) !== -1 ) {
-					window.clearInterval( pollTimer );
-					var url = win.document.URL;
-					
-					//validateToken(acToken);
-				}
-			} catch(e) {
-				console.log(e);
-			}
-		//}, 1000 );
-		}, 5000 );
-		*/
+		var haUrl = Utils.getFullDataRequestURL();
+		var url = XEE_AUTH_URL
+			+ "?client_id=" + XEE_CLIENT_ID
+			+ "&response_type=code"
+			+ "&scope=" + encodeURIComponent( XEE_SCOPE.join( " " ) )
+			+ "&redirect_uri=" + encodeURIComponent( REDIRECT_URI )
+			+ "&state=" + ( haUrl.startsWith( "https" ) ? encodeURIComponent( haUrl ) : '' );
+		var win = window.open( url, "xee_authentification", "width=620, height=740" ); 
 	}
 	function _showAuthentification( deviceId ) {
 		_deviceId = deviceId;
 		try {
-			api.setCpanelContent(
-					'<div id="xee-authentification-panel" class="xee-panel">'
+			var html = '<div id="xee-authentification-panel" class="xee-panel">'
 				+		'<div class="xee-toolbar">'
 				+			'<button type="button" class="xee-help"><span class="icon icon-help"></span>Help</button>'
 				+		'</div>'
 				+		'<div class="xee-explanation xee-hidden">'
 				+			_T( "ExplanationAuthentification" )
 				+		'</div>'
-				+		'<div id="xee-authentification">'
-				+			'<div class="xee-step">'
-				+				'1/ Open the <a href="#" class="xee-login">Xee authentification page</a> and use your Xee account'
-				+			'</div>'
-				+			'<div class="xee-step">'
-				+				'2/ Copy the result and validate'
-				+				'<input type="text" id="xee-authentification-params">'
-				+				'<button type="button" id="xee-authentification-set">Set</button>'
-				+			'</div>'
-				+		'</div>'
-				+	'</div>'
-			);
+				+		'<div id="xee-authentification">';
+			var haUrl = Utils.getFullDataRequestURL();
+			if ( haUrl.startsWith( "https" ) ) {
+				html += 	'<div class="xee-step">'
+					+			'Open the <a href="#" class="xee-login">Xee authentification page</a> and use your Xee account.'
+					+		'</div>'
+			} else {
+				// Changing from https to http is not allowed by browsers
+				html +=		'<div class="xee-step">'
+					+			'1/ Open the <a href="#" class="xee-login">Xee authentification page</a> and use your Xee account'
+					+		'</div>'
+					+		'<div class="xee-step">'
+					+			'2/ Copy the result and validate'
+					+			'<input type="text" id="xee-authentification-params">'
+					+			'<button type="button" id="xee-authentification-set">Set</button>'
+					+		'</div>';
+			}
+			html +=		'</div>';
+			api.setCpanelContent( html );
+
 			// Manage UI events
 			$( "#xee-authentification-panel" )
 				.on( "click", ".xee-help" , function() {
 					$( ".xee-explanation" ).toggleClass( "xee-hidden" );
-				} )
+				})
 				.on( "click", ".xee-login" , function() {
 					_login();
-				} )
+					return false;
+				})
 				.on( "click", "#xee-authentification-set" , function() {
 					_performActionSetTokens( $( "#xee-authentification-params" ).val() );
 					$( "#xee-authentification" ).html( _T( "AuthorizationSaved" ) );
-				} );
+				});
 		} catch (err) {
 			Utils.logError('Error in Xee.showAuthentification(): ' + err);
 		}
 	}
 
 	// *************************************************************************************************
-	// Cars
+	// Vehicles
 	// *************************************************************************************************
 
 	/**
-	 * Get informations on cars
+	 * Get informations on vehicles
 	 */
-	function _getCarsAsync() {
+	function _getVehiclesAsync() {
 		var d = $.Deferred();
 		api.showLoadingOverlay();
 		$.ajax( {
-			url: Utils.getDataRequestURL() + "id=lr_Xee&command=getCars&output_format=json#",
+			url: Utils.getFullDataRequestURL() + "?id=lr_Xee&command=getVehicles&output_format=json#",
 			dataType: "json"
 		} )
-		.done( function( cars ) {
-			//console.info(cars);
+		.done( function( vehicles ) {
+			//console.info(vehicles);
 			api.hideLoadingOverlay();
-			if ( $.isArray( cars ) ) {
-				d.resolve( cars );
+			if ( $.isArray( vehicles ) ) {
+				d.resolve( vehicles );
 			} else {
-				Utils.logError( "No cars" );
+				Utils.logError( "No vehicle" );
 				d.reject();
 			}
 		} )
 		.fail( function( jqxhr, textStatus, errorThrown ) {
 			api.hideLoadingOverlay();
-			Utils.logError( "Get cars error : " + errorThrown );
+			Utils.logError( "Get vehicles error : " + errorThrown );
 			d.reject();
 		} );
 		return d.promise();
 	}
 
 	/**
-	 * Draw and manage cars list
+	 * Draw and manage vehicles list
 	 */
-	function _drawCarsList() {
-		if ( $( "#xee-cars" ).length === 0 ) {
+	function _drawVehiclesList() {
+		if ( $( "#xee-vehicles" ).length === 0 ) {
 			return;
 		}
-		$.when( _getCarsAsync() )
-			.done( function( cars ) {
-				if ( cars.length > 0 ) {
-					var html =	'<table><tr><th>Id</th><th>Name</th></tr>';
-					$.each( cars, function( i, car ) {
+		$.when( _getVehiclesAsync() )
+			.done( function( vehicles ) {
+				if ( vehicles.length > 0 ) {
+					var html =	'<table><tr><th>Id</th><th>Name</th><th>Last update</th></tr>';
+					$.each( vehicles, function( i, vehicle ) {
 						html +=	'<td>'
-							+		car.id
+							+		vehicle.id
 							+	'</td>'
 							+	'<td>'
-							+		car.name
+							+		vehicle.name
+							+	'</td>'
+							+	'<td>'
+							+		_convertTimestampToLocaleString( vehicle.lastUpdate )
 							+	'</td>'
 							+ '</tr>';
 					} );
 					html += '</table>';
-					$("#xee-cars").html( html );
+					$("#xee-vehicles").html( html );
 				} else {
-					$("#xee-cars").html( _T( "NoCar" ) );
+					$("#xee-vehicles").html( _T( "NoVehicle" ) );
 				}
 			} );
 	}
 
 	/**
-	 * Show cars tab
+	 * Show vehicles tab
 	 */
-	function _showCars( deviceId ) {
+	function _showVehicles( deviceId ) {
 		_deviceId = deviceId;
 		try {
 			api.setCpanelContent(
-					'<div id="xee-cars-panel" class="xee-panel">'
+					'<div id="xee-vehicles-panel" class="xee-panel">'
 				+		'<div class="xee-toolbar">'
 				+			'<button type="button" class="xee-help"><span class="icon icon-help"></span>Help</button>'
 				+			'<button type="button" class="xee-sync"><span class="icon icon-refresh"></span>Sync</button>'
 				+		'</div>'
 				+		'<div class="xee-explanation xee-hidden">'
-				+			_T( "ExplanationSyncingCars" )
+				+			_T( "ExplanationSyncingVehicles" )
 				+		'</div>'
-				+		'<div id="xee-cars">'
+				+		'<div id="xee-vehicles">'
 				+		'</div>'
 				+	'</div>'
 			);
 			// Manage UI events
-			$( "#xee-cars-panel" )
+			$( "#xee-vehicles-panel" )
 				.on( "click", ".xee-help" , function() {
 					$( ".xee-explanation" ).toggleClass( "xee-hidden" );
 				} )
 				.on( "click", ".xee-sync", function() {
-					$( "#xee-cars" ).html( _T( "SyncingCars" ) );
+					$( "#xee-vehicles" ).html( _T( "SyncingVehicles" ) );
 					_performActionSync();
 				} );
-			// Display the cars
-			_drawCarsList();
+			// Display the vehicles
+			_drawVehiclesList();
 		} catch ( err ) {
-			Utils.logError( "Error in Xee.showCars(): " + err );
+			Utils.logError( "Error in Xee.showVehicles(): " + err );
 		}
 	}
 
@@ -339,7 +370,7 @@ There's no error."
 				+		'<div class="xee-explanation xee-hidden">'
 				+			_T( "ExplanationMap" )
 				+		'</div>'
-				+		'<iframe id="xee-map"src="' + api.getDataRequestURL() + '?id=lr_Xee&command=getMap' + ( isDebug ? "&debug=true": "") + '"></iframe>'
+				+		'<iframe id="xee-map"src="' + Utils.getFullDataRequestURL() + '?id=lr_Xee&command=getMap' + ( isDebug ? "&debug=true": "") + '"></iframe>'
 				+	'</div>'
 			);
 			// Manage UI events
@@ -349,7 +380,7 @@ There's no error."
 				} )
 				.on( "click", ".xee-big-map" , function() {
 					var isDebug = (api.getDeviceStateVariable(_deviceId, "urn:upnp-org:serviceId:Xee1", "DebugMode", {dynamic: false}) === "1");
-					var win = window.open( api.getDataRequestURL() + "?id=lr_Xee&command=getMap" + ( isDebug ? "&debug=true": ""), "_blank" );
+					var win = window.open( Utils.getFullDataRequestURL() + "?id=lr_Xee&command=getMap" + ( isDebug ? "&debug=true": ""), "_blank" );
 					if ( win ) {
 						win.focus();
 					}
@@ -370,7 +401,7 @@ There's no error."
 		var d = $.Deferred();
 		api.showLoadingOverlay();
 		$.ajax( {
-			url: Utils.getDataRequestURL() + "id=lr_Xee&command=getErrors&output_format=json#",
+			url: Utils.getFullDataRequestURL() + "?id=lr_Xee&command=getErrors&output_format=json#",
 			dataType: "json"
 		} )
 		.done( function( errors ) {
@@ -446,21 +477,21 @@ There's no error."
 	}
 
 	// *************************************************************************************************
-	// Car (child)
+	// Vehicle (child)
 	// *************************************************************************************************
 
 	/**
-	 * Show car tab
+	 * Show vehicle tab
 	 */
-	function _showCar( childDeviceId ) {
+	function _showVehicle( childDeviceId ) {
 		try {
 			api.setCpanelContent(
-					'<div id="xee-car">'
+					'<div id="xee-vehicle">'
 				+		'TODO'
 				+	'</div>'
 			);
 		} catch (err) {
-			Utils.logError('Error in Xee.showCar(): ' + err);
+			Utils.logError('Error in Xee.showVehicle(): ' + err);
 		}
 	}
 
@@ -469,40 +500,28 @@ There's no error."
 	// *************************************************************************************************
 
 	/**
-	 * 
+	 * Set tokens
 	 */
 	function _performActionSetTokens( params ) {
 		Utils.logDebug( "[Xee.performActionSetTokens] Set tokens '" + params + "'" );
-		api.performActionOnDevice( _deviceId, XEE_SID, "SetTokens", {
-			actionArguments: {
+		return Utils.performActionOnDevice(
+			_deviceId, XEE_SID, "SetTokens", {
 				output_format: "json",
 				newTokens: params
-			},
-			onSuccess: function( response ) {
-				Utils.logDebug( "[Xee.performActionSetTokens] OK" );
-			},
-			onFailure: function( response ) {
-				Utils.logDebug( "[Xee.performActionSetTokens] KO" );
 			}
-		});
+		)
 	}
 
 	/**
-	 * 
+	 * Synchronize with Xee Cloud
 	 */
 	function _performActionSync() {
-		Utils.logDebug( "[Xee.performActionSync] Sync cars" );
-		api.performActionOnDevice( _deviceId, XEE_SID, "Sync", {
-			actionArguments: {
+		Utils.logDebug( "[Xee.performActionSync] Sync vehicles" );
+		return Utils.performActionOnDevice(
+			_deviceId, XEE_SID, "Sync", {
 				output_format: "json"
-			},
-			onSuccess: function( response ) {
-				Utils.logDebug( "[Xee.performActionSync] OK" );
-			},
-			onFailure: function( response ) {
-				Utils.logDebug( "[Xee.performActionSync] KO" );
 			}
-		});
+		)
 	}
 
 	// *************************************************************************************************
@@ -552,6 +571,42 @@ There's no error."
 	}
 
 	// *************************************************************************************************
+	// ALTUI
+	// *************************************************************************************************
+
+	// Device Xee in ALTUI
+	function _ALTUI_drawXeeDevice( device ) {
+		var version = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "PluginVersion" );
+		var lastUpdate = parseInt( MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "LastUpdateDate" ), 10 );
+		var lastMessage = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "LastMessage" ) || "";
+		var lastError = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "LastError" ) || "";
+		var firstName = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "FirstName" ) || "";
+		var lastName = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "LastName" ) || "";
+		return '<div class="panel-content">'
+			+		'<div class="small">Updated ' + $.timeago( lastUpdate * 1000 ) + '</div>'
+			+		'<div class="small">v' + version + ( firstName || lastName ? ' - ' + firstName + ' ' + lastName : '' ) + ' - ' + lastMessage + '</div>'
+			+		'<div>' + lastError + '</div>'
+			+	'</div>';
+	}
+
+	// Device XeeVehicle in ALTUI
+	function _ALTUI_drawXeeVehicleDevice( device ) {
+		//var lastUpdate = parseInt( MultiBox.getStatus( device, "urn:upnp-org:serviceId:XeeVehicle1", "LastUpdateDate" ), 10 );
+		var locationDate = parseInt( MultiBox.getStatus( device, "urn:upnp-org:serviceId:Location1", "LocationDate" ), 10 );
+		var distance = _getNearestZone( device );
+		var html = '<div class="panel-content">'
+			//+		'<div>Updated ' + $.timeago( lastUpdate * 1000 ) + '</div>'
+			//+		'<div>';
+		if ( distance ) {
+			html +=		'<div class="small">' + ( distance[2] ? '(in) ' : '(out) ' ) + distance[0] + ' @ ' + ( distance[1] > 999 ? ( distance[1] / 1000 ) + 'km' : distance[1] + 'm' ) + '</div>';
+			html +=		'<div class="small">' + $.timeago( locationDate * 1000 ) + '</div>'
+		}
+		html +=		'</div>'
+			+	'</div>';
+		return html;
+	}
+
+	// *************************************************************************************************
 	// Main
 	// *************************************************************************************************
 
@@ -563,16 +618,16 @@ There's no error."
 			// Update xee panel (ALTUI)
 			if ( window.MultiBox ) {
 				var device = MultiBox.getDeviceByAltuiID( deviceObjectFromLuStatus.altuiid );
-				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( myModule.ALTUI_drawXeeDevice( device ) );
+				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( _ALTUI_drawXeeDevice( device ) );
 			}
-			// Update cars panel
-			_drawCarsList();
+			// Update vehicles panel
+			_drawVehiclesList();
 		}
-		if ( deviceObjectFromLuStatus.device_type === XEE_CAR_DID ) {
-			// Update xee car panel (ALTUI)
+		if ( deviceObjectFromLuStatus.device_type === XEE_VEHICLE_DID ) {
+			// Update xee vehicle panel (ALTUI)
 			if ( window.MultiBox ) {
 				var device = MultiBox.getDeviceByAltuiID( deviceObjectFromLuStatus.altuiid );
-				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( myModule.ALTUI_drawXeeCarDevice( device ) );
+				$( "#" + deviceObjectFromLuStatus.altuiid + " .panel-content" ).html( _ALTUI_drawXeeVehicleDevice( device ) );
 			}
 		}
 	}
@@ -581,42 +636,16 @@ There's no error."
 		uuid: _uuid,
 		onDeviceStatusChanged: _onDeviceStatusChanged,
 		showAuthentification: _showAuthentification,
-		showCars: _showCars,
+		showVehicles: _showVehicles,
 		showMap: _showMap,
-		showCar: _showCar,
+		showVehicle: _showVehicle,
 		showErrors: _showErrors,
 		showDonate: _showDonate,
 		//setTokens: _performActionSetTokens,
 		setTokens: function(tokens) { console.log(tokens); },
 
-		// Device Xee in ALTUI
-		ALTUI_drawXeeDevice: function( device ) {
-			var version = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "PluginVersion" );
-			var lastUpdate = parseInt( MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "LastUpdateDate" ), 10 );
-			var lastMessage = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "LastMessage" ) || "";
-			var lastError = MultiBox.getStatus( device, "urn:upnp-org:serviceId:Xee1", "LastError" ) || "";
-			return '<div class="panel-content">'
-				+		'<div class="small">Updated ' + $.timeago( lastUpdate * 1000 ) + '</div>'
-				+		'<div class="small">v' + version + ' - ' + lastMessage + '</div>'
-				+		'<div>' + lastError + '</div>'
-				+	'</div>';
-		},
-		// Device XeeCar in ALTUI
-		ALTUI_drawXeeCarDevice: function( device ) {
-			var lastUpdate = parseInt( MultiBox.getStatus( device, "urn:upnp-org:serviceId:XeeCar1", "LastUpdateDate" ), 10 );
-			var locationDate = parseInt( MultiBox.getStatus( device, "urn:upnp-org:serviceId:Location1", "LocationDate" ), 10 );
-			var distance = _getNearestZone( device );
-			var html = '<div class="panel-content">'
-				+		'<div>Updated ' + $.timeago( lastUpdate * 1000 ) + '</div>'
-				+		'<div>';
-			if ( distance ) {
-				html +=		( distance[2] ? '(in)' : '(out)' ) + distance[0] + '@' + ( distance[1] > 999 ? ( distance[1] / 1000 ) + 'km' : distance[1] + 'm' );
-				html +=			' <span class="small">(' + $.timeago( locationDate * 1000 ) + ')</span>'
-			}
-			html +=		'</div>'
-				+	'</div>';
-			return html;
-		}
+		ALTUI_drawXeeDevice: _ALTUI_drawXeeDevice,
+		ALTUI_drawXeeVehicleDevice: _ALTUI_drawXeeVehicleDevice
 	};
 
 	// Register

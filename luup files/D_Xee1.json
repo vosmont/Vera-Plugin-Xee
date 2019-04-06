@@ -164,14 +164,14 @@
 		},
 		{
 			"Label": {
-				"lang_tag": "xee_cars",
-				"text": "Cars"
+				"lang_tag": "xee_vehicles",
+				"text": "Vehicles"
 			},
 			"Position": 2,
 			"top_navigation_tab": 1,
 			"TabType": "javascript",
 			"ScriptName": "J_Xee1.js",
-			"Function": "Xee.showCars"
+			"Function": "Xee.showVehicles"
 		},
 		{
 			"Label": {

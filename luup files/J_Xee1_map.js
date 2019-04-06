@@ -3,16 +3,16 @@
 /**
  * This file is part of the plugin Xee.
  * https://github.com/vosmont/Vera-Plugin-Xee
- * Copyright (c) 2016 Vincent OSMONT
+ * Copyright (c) 2019 Vincent OSMONT
  * This code is released under the MIT License, see LICENSE.
  */
 
 var XeeMap = ( function( $ ) {
 	var _debug = false;
-	var _cars = {};
+	var _vehicles = {};
 	var _geofences = {};
 	var _zones = [];
-	var _cars = {};
+	var _vehicles = {};
 	var _pollInterval = 10;
 	var _isAdding = false;
 	var _isModified = false;
@@ -25,8 +25,61 @@ var XeeMap = ( function( $ ) {
 	/**
 	 *
 	 */
-	function _initialize() {
-		_loadGeofences();
+	function _initialize( center ) {
+		// Create the map
+		var map = L.map( "map", {
+			center: ( center ? center : { lat: 48.8534, lng: 2.3488 } ),
+			zoom: 14,
+			editable: true
+		});
+
+		// Layer
+		var osmLayer = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', { 
+			attribution: '© OpenStreetMap contributors',
+			maxZoom: 19
+		});
+		map.addLayer(osmLayer);
+
+		// Manage UI events of the map
+		map.on( "click", function( event ) {
+			if ( _isAdding ) {
+				// Add a new geofence at the position of the click
+				var position = event.latlng;
+				var zoneIdx = _addZone( map, {
+					name     : "New zone",
+					latitude : position.lat,
+					longitude: position.lng,
+					radius   : 500
+				} );
+				_setIsModified( true );
+				_setIsAdding( false );
+				_selectZone( zoneIdx );
+				_displayZoneInfos( zoneIdx );
+			} else {
+				_selectZone();
+				_displayZoneInfos();
+				_displayVehicleInfos();
+			}
+		});
+
+		// Zones control
+		var zonesControl = L.control({ position: "topright" });
+		zonesControl.onAdd = function( map ) {
+			return $( '<div id="legend-zones" class="legend" />' ).get(0);
+		};
+		zonesControl.addTo( map );
+
+		// Vehicles control
+		var vehiclesControl = L.control({ position: "bottomleft" });
+		vehiclesControl.onAdd = function( map ) {
+			return $( '<div id="legend-vehicles" class="legend" />' ).get(0);
+		};
+		vehiclesControl.addTo( map );
+
+		_loadGeofences( map );
+		
+		// Draw the vehicles
+		_loadVehicles( map );
 	}
 
 	// *************************************************************************************************
@@ -58,9 +111,9 @@ var XeeMap = ( function( $ ) {
 		_setIsAdding( false );
 		$.each( _zones, function( i, zone ) {
 			if ( ( zoneIdx != null) && ( i === zoneIdx ) ) {
-				zone.circle.setEditable( true );
+				zone.circle.enableEdit();
 			} else {
-				zone.circle.setEditable( false );
+				zone.circle.disableEdit();
 			}
 		} );
 		if ( zoneIdx != null) {
@@ -75,46 +128,18 @@ var XeeMap = ( function( $ ) {
 	/**
 	 *
 	 */
-	function _loadGeofences() {
+	function _loadGeofences( map ) {
 		_zones = [];
 		$.ajax( {
 			url: window.location.origin + window.location.pathname + "?id=lr_Xee&command=getGeofences&output_format=json#",
 			dataType: "json"
 		} )
 		.done( function( geofences ) {
-			// Create the map center on the first (main) zone
+			// Center on the first (main) zone
 			var mainZone = $.isArray( geofences ) ? geofences[0] : null;
-			var center = mainZone ? { lat: mainZone.latitude, lng: mainZone.longitude } : { lat: 66.624447, lng: 26.500353 };
-			var map = new google.maps.Map( document.getElementById( "map" ), {
-				zoom: 14,
-				center: center,
-				mapTypeId: google.maps.MapTypeId.ROADMAP,
-				streetViewControl: false,
-				scaleControl : true
-			});
-			map.controls[ google.maps.ControlPosition.RIGHT_TOP ].push( document.getElementById( "legend-zones" ) );
-			map.controls[ google.maps.ControlPosition.LEFT_BOTTOM ].push( document.getElementById( "legend-cars" ) );
-			// Manage UI events of the map
-			google.maps.event.addListener( map, "click", function( event ) {
-				if ( _isAdding ) {
-					// Add a new geofence at the position of the click
-					var position = event.latLng;
-					var zoneIdx = _addZone( map, {
-						name     : "New zone",
-						latitude : position.lat(),
-						longitude: position.lng(),
-						radius   : 500
-					} );
-					_setIsModified( true );
-					_setIsAdding( false );
-					_selectZone( zoneIdx );
-					_displayZoneInfos( zoneIdx );
-				} else {
-					_selectZone();
-					_displayZoneInfos();
-					_displayCarInfos();
-				}
-			});
+			if ( mainZone ) {
+				map.flyTo( { lat: mainZone.latitude, lng: mainZone.longitude } );
+			}
 
 			$( "#legend-zones" ).html(
 					'<div class="legend-title">'
@@ -139,10 +164,13 @@ var XeeMap = ( function( $ ) {
 				+	'</div>'
 				+	'<div id="legend-zone-infos" class="legend-content"></div>'
 			);
+			$( "#legend-zones" ).click( function( event ) {
+				event.stopPropagation();
+			});
 			$( "#legend-zones select" ).change( function() {
 				var zoneIdx = parseInt( $( this ).val(), 10 );
 				var geofence = _zones[ zoneIdx ].geofence;
-				map.setCenter( { lat: geofence.latitude, lng: geofence.longitude } );
+				map.flyTo( { lat: geofence.latitude, lng: geofence.longitude } );
 				_selectZone( zoneIdx );
 				_displayZoneInfos( zoneIdx );
 			} );
@@ -166,9 +194,6 @@ var XeeMap = ( function( $ ) {
 					_addZone( map, geofence, i );
 				} );
 			}
-
-			// Draw the cars
-			_loadCars( map );
 		} )
 		.fail( function( jqxhr, textStatus, errorThrown ) {
 			
@@ -178,16 +203,16 @@ var XeeMap = ( function( $ ) {
 	/**
 	 *
 	 */
-	function _updateZonesIn( cars ) {
+	function _updateZonesIn( vehicles ) {
 		if ( _isModified ) {
 			$.each( _zones, function( zoneIdx, zone ) {
-				zone.circle.setOptions( { fillColor: "#f0ad4e" } );
+				zone.circle.setStyle( { fillColor: "#f0ad4e" } );
 			} );
 		} else {
 			var zonesIn = [];
-			$.each( cars, function( i, car ) {
-				if ( car.status.zonesIn ) {
-					$.each( car.status.zonesIn.split( ";" ), function( i, zoneName ) {
+			$.each( vehicles, function( i, vehicle ) {
+				if ( vehicle.status.zonesIn ) {
+					$.each( vehicle.status.zonesIn.split( ";" ), function( i, zoneName ) {
 						if ( $.inArray( zoneName, zonesIn ) === -1 ) {
 							zonesIn.push( zoneName );
 						}
@@ -196,9 +221,9 @@ var XeeMap = ( function( $ ) {
 			} );
 			$.each( _zones, function( zoneIdx, zone ) {
 				if ( $.inArray( zone.geofence.name, zonesIn ) > -1 ) {
-					zone.circle.setOptions( { fillColor: "#ff0000" } );
+					zone.circle.setStyle( { fillColor: "#ff0000" } );
 				} else {
-					zone.circle.setOptions( { fillColor: "#00ff00" } );
+					zone.circle.setStyle( { fillColor: "#00ff00" } );
 				}
 			} );
 		}
@@ -278,19 +303,21 @@ var XeeMap = ( function( $ ) {
 		$( "#legend-zone" ).append(
 			'<option value="' + zoneIdx + '">' + ( zoneIdx + 1 ) + ". " + geofence.name + '</option>'
 		);
-		var circle = new google.maps.Circle({
-			strokeColor: "#aaaaaa",
-			strokeOpacity: 0.8,
-			strokeWeight: 2,
+		var circle = L.circle( [ geofence.latitude, geofence.longitude ], {
+			radius: geofence.radius,
+			color: "#aaaaaa",
+			opacity: 0.8,
+			weight: 2,
 			fillColor: "#f0ad4e",
 			fillOpacity: 0.35,
 			title: geofence.name,
-			map: map,
-			editable: false,
-			clickable: true,
-			center: { lat: geofence.latitude, lng: geofence.longitude },
-			radius: geofence.radius
-		});
+			interactive: true,
+			editable: true
+		}).addTo( map );
+		circle.bindTooltip( geofence.name, {
+			direction: "top",
+			permanent: true
+		}).openTooltip();
 		circle.zoneIdx = zoneIdx;
 		_zones[ zoneIdx ] = {
 			geofence: geofence,
@@ -298,22 +325,24 @@ var XeeMap = ( function( $ ) {
 		};
 
 		// Manage UI events
-		google.maps.event.addListener( circle, "click", function() {
+		circle.on( "click", function( event ) {
 			_selectZone( this.zoneIdx );
 			_displayZoneInfos( this.zoneIdx );
-		} );
-		google.maps.event.addListener( circle, "radius_changed", function() {
-			_zones[ this.zoneIdx ].geofence.radius = Math.ceil( circle.getRadius() );
+			L.DomEvent.stopPropagation( event );
+		});
+		circle.on( "editable:editing", function( event ) {
+			circle.closeTooltip();
+		});
+		circle.on( "editable:vertex:dragend", function( event ) {
+			var position = this.getLatLng();
+			var geofence = _zones[ this.zoneIdx ].geofence;
+			geofence.latitude = position.lat;
+			geofence.longitude = position.lng;
+			geofence.radius = Math.ceil( this.getRadius() );
 			_displayZoneInfos( this.zoneIdx );
 			_setIsModified( true );
-		} );
-		google.maps.event.addListener( circle, "center_changed", function() {
-			var position = circle.getCenter();
-			_zones[ this.zoneIdx ].geofence.latitude = position.lat();
-			_zones[ this.zoneIdx ].geofence.longitude = position.lng();
-			_displayZoneInfos( this.zoneIdx );
-			_setIsModified( true );
-		} );
+			circle.openTooltip();
+		});
 
 		return zoneIdx;
 	}
@@ -338,7 +367,7 @@ var XeeMap = ( function( $ ) {
 		if ( window.confirm( "Are you sure to remove this geofence \"" + _zones[ zoneIdx ].geofence.name + "\"?" ) ) {
 			// Remove the geofence from the map
 			var removedZone = _zones.splice( zoneIdx, 1 )[ 0 ];
-			removedZone.circle.setMap( null );
+			removedZone.circle.remove();
 			removedZone = null;
 			$( '#legend-zone option[value="' + zoneIdx + '"]' ).remove();
 			// Update the next geofences
@@ -353,47 +382,47 @@ var XeeMap = ( function( $ ) {
 	}
 
 	// *************************************************************************************************
-	// Cars
+	// Vehicles
 	// *************************************************************************************************
 
 	/**
-	 * Display the informations of a car, or clear
+	 * Display the informations of a vehicle, or clear
 	 */
-	function _displayCarInfos( carId ) {
-		if ( carId != null ) {
-			var car = _cars[ carId ].car;
-			var location = car.status.location;
+	function _displayVehicleInfos( vehicleId ) {
+		if ( vehicleId != null ) {
+			var vehicle = _vehicles[ vehicleId ].vehicle;
+			var location = vehicle.status.location;
 			if ( location ) {
-				$( "#legend-car-infos" ).html(
+				$( "#legend-vehicle-infos" ).html(
 					'<div>Geoloc: ' + location.latitude + ',' + location.longitude + '</div>'
 				);
 			} else {
-				$( "#legend-car-infos" ).html(
+				$( "#legend-vehicle-infos" ).html(
 					'<div>Geoloc: no location</div>'
 				);
 			}
-			$( "#legend-car" ).val( carId );
+			$( "#legend-vehicle" ).val( vehicleId );
 		} else {
-			$( "#legend-car-infos" ).empty();
-			$( "#legend-car" ).val( "" );
+			$( "#legend-vehicle-infos" ).empty();
+			$( "#legend-vehicle" ).val( "" );
 		}
 	}
 
 	/**
 	 *
 	 */
-	function _getCarsAsync() {
+	function _getVehiclesAsync() {
 		var d = $.Deferred();
 		$.ajax( {
-			url: window.location.origin + window.location.pathname + "?id=lr_Xee&command=getCars&output_format=json#",
+			url: window.location.origin + window.location.pathname + "?id=lr_Xee&command=getVehicles&output_format=json#",
 			dataType: "json"
 		} )
-		.done( function( cars ) {
-			if ( $.isArray( cars ) ) {
-				cars.sort( function( c1, c2 ) {
+		.done( function( vehicles ) {
+			if ( $.isArray( vehicles ) ) {
+				vehicles.sort( function( c1, c2 ) {
 					return c1.id - c2.id;
 				} );
-				d.resolve( cars );
+				d.resolve( vehicles );
 			} else {
 				d.reject();
 			}
@@ -407,87 +436,91 @@ var XeeMap = ( function( $ ) {
 	/**
 	 *
 	 */
-	function _updateCars() {
-		$.when( _getCarsAsync() )
-			.done( function( cars ) {
-				$.each( cars, function( i, car ) {
-					var carId = car.id;
-					if ( _cars[ carId ] ) {
-						_cars[ carId ].car = car;
-						var location = car.status.location;
-						if ( location && _cars[ carId ].marker ) {
-							_cars[ carId ].marker.setPosition( { lat: location.latitude, lng: location.longitude } );
+	function _updateVehicles() {
+		$.when( _getVehiclesAsync() )
+			.done( function( vehicles ) {
+				$.each( vehicles, function( i, vehicle ) {
+					var vehicleId = vehicle.id;
+					if ( _vehicles[ vehicleId ] ) {
+						_vehicles[ vehicleId ].vehicle = vehicle;
+						var location = vehicle.status.location;
+						if ( location && _vehicles[ vehicleId ].marker ) {
+							_vehicles[ vehicleId ].marker.setLatLng( { lat: location.latitude, lng: location.longitude } );
 						}
 					}
 				} );
-				_updateZonesIn( cars );
-				window.setTimeout( _updateCars, _pollInterval * 1000 );
+				_updateZonesIn( vehicles );
+				window.setTimeout( _updateVehicles, _pollInterval * 1000 );
 			} );
 	}
 
 	/**
 	 *
 	 */
-	function _loadCars( map ) {
-		$( "#legend-cars" ).html(
+	function _loadVehicles( map ) {
+		$( "#legend-vehicles" ).html(
 				'<div class="legend-title">'
-			+		'Car '
-			+		'<select id="legend-car">'
+			+		'Vehicle '
+			+		'<select id="legend-vehicle">'
 			+			'<option value="">...</option>'
 			+		'</select>'
 			+	'</div>'
-			+	'<div id="legend-car-infos" class="legend-content"></div>'
+			+	'<div id="legend-vehicle-infos" class="legend-content"></div>'
 		);
-		$( "#legend-cars select" ).change( function() {
-			var carId = parseInt( $( this ).val() );
-			var location = _cars[ carId ].car.status.location;
+		$( "#legend-vehicles" ).click( function( event ) {
+			event.stopPropagation();
+		});
+		$( "#legend-vehicles select" ).change( function() {
+			var vehicleId = $( this ).val();
+			var location = _vehicles[ vehicleId ].vehicle.status.location;
 			if ( location ) {
-				map.setCenter( { lat: location.latitude, lng: location.longitude } );
+				map.flyTo( { lat: location.latitude, lng: location.longitude } );
 			}
-			_displayCarInfos( carId );
+			_displayVehicleInfos( vehicleId );
 		} );
 
-		$.when( _getCarsAsync() )
-			.done( function( cars ) {
-				$.each( cars, function( i, car ) {
-					$( "#legend-car" ).append(
-						'<option value="' + car.id + '">' + ( i + 1 ) + '. ' + car.name + '</option>'
+		$.when( _getVehiclesAsync() )
+			.done( function( vehicles ) {
+				$.each( vehicles, function( i, vehicle ) {
+					$( "#legend-vehicle" ).append(
+						'<option value="' + vehicle.id + '">' + ( i + 1 ) + '. ' + vehicle.name + '</option>'
 					);
-					var carId = car.id;
-					_cars[ carId ] = { car: car };
-					var location = car.status.location;
+					var vehicleId = vehicle.id;
+					_vehicles[ vehicleId ] = { vehicle: vehicle };
+					var location = vehicle.status.location;
 					if ( location ) {
-						var marker = new google.maps.Marker( {
-							position: { lat: location.latitude, lng: location.longitude },
-							//icon: "http://vosmont.github.io/icons/xee_car.png",
-							title: car.name,
-							label: ( i + 1 ).toString(),
-							draggable:true, // a enlever
-							clickable: true,
-							map: map
-						} );
-						marker.carId = carId;
-						_cars[ carId ].marker = marker;
+						var marker = L.marker( L.latLng( location.latitude, location.longitude ), {
+							//icon: "http://vosmont.github.io/icons/xee_vehicle.png",
+							title: ( i + 1 ).toString(),
+							draggable: ( _debug && true ),
+							autoPan: true
+						}).addTo( map );
+						marker.bindTooltip( vehicle.name, {
+							direction: "top",
+							permanent: true
+						}).openTooltip();
+						marker.vehicleId = vehicleId;
+						_vehicles[ vehicleId ].marker = marker;
 
 						// Manage UI events
-						google.maps.event.addListener( marker, "click", function() {
-							_displayCarInfos( this.carId );
-						} );
+						marker.on( "click", function( event ) {
+							_displayVehicleInfos( this.vehicleId );
+						});
 
-						// Debug : move cars with drag event
+						// Debug : move vehicles with drag event
 						if ( _debug ) {
-							google.maps.event.addListener( marker, "dragend", function() {
-								var position = this.getPosition();
+							marker.on( "dragend", function( event ) {
+								var position = this.getLatLng();
 								$.ajax( {
-									url: window.location + "id=lr_Xee&command=setCarLocation&carId=" + this.carId + "&latitude=" + position.lat().toFixed(6) + "&longitude=" + position.lng().toFixed(6) + "&output_format=json#",
+									url: window.location + "id=lr_Xee&command=setVehicleLocation&vehicleId=" + this.vehicleId + "&latitude=" + position.lat.toFixed(6) + "&longitude=" + position.lng.toFixed(6) + "&output_format=json#",
 									dataType: "json"
 								} );
-							} );
+							});
 						}
 					}
 				} );
-				_updateZonesIn( cars );
-				window.setTimeout( _updateCars, _pollInterval * 1000 );
+				_updateZonesIn( vehicles );
+				window.setTimeout( _updateVehicles, _pollInterval * 1000 );
 			} );
 	}
 
